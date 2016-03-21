@@ -1,0 +1,15 @@
+{
+  "name": "zorkstuff",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dis.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
+  "license": "ISC",
+  "dependencies": {
+    "ansicolors": "^0.3.2",
+    "readline-sync": "^1.4.1"
+  }
+}
