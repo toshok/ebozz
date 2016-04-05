@@ -5,12 +5,12 @@
   "main": "build/ebozz.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel -d build/ ebozz.js log.js",
-    "ebozz": "node build/ebozz.js",
-    "zork1": "node build/ebozz.js tests/zork1.dat",
-    "zork2": "node build/ebozz.js tests/zork2.dat",
-    "zork3": "node build/ebozz.js tests/zork3.dat",
-    "hhg": "node build/ebozz.js tests/hitchhikers-guide.dat"
+    "build": "babel -d build/ ebozz.js console.js log.js",
+    "ebozz": "node build/console.js",
+    "zork1": "node build/console.js tests/zork1.dat",
+    "zork2": "node build/console.js tests/zork2.dat",
+    "zork3": "node build/console.js tests/zork3.dat",
+    "hhg": "node build/console.js tests/hitchhikers-guide.dat"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "ISC",
