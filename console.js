@@ -35,9 +35,13 @@ let b = fs.readFileSync(file);
 let log = new Log(parsed.debug);
 let game;
 
-game = new Game(b, log, (input_state) => {
-    game.continueAfterUserInput(input_state, readline.question(''));
-});
+game = new Game(b, log,
+                (input_state) => {
+                    game.continueAfterUserInput(input_state, readline.question(''));
+                },
+                (str) => {
+                    process.stdout.write(str);
+                });
 
 if (parsed.header)
     game.dumpHeader();

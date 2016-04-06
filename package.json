@@ -5,8 +5,9 @@
   "main": "build/ebozz.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel -d build/ ebozz.js console.js log.js",
+    "build": "babel -d build/ ebozz.js console.js log.js slack.js",
     "ebozz": "node build/console.js",
+    "slackbot": "node build/slack.js",
     "zork1": "node build/console.js tests/zork1.dat",
     "zork2": "node build/console.js tests/zork2.dat",
     "zork3": "node build/console.js tests/zork3.dat",
@@ -17,6 +18,7 @@
   "dependencies": {
     "ansicolors": "^0.3.2",
     "nopt": "^3.0.6",
-    "readline-sync": "^1.4.1"
+    "readline-sync": "^1.4.1",
+    "slackbots": "^0.5.1"
   }
 }

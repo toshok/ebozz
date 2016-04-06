@@ -303,7 +303,7 @@ log.warn('object is 0 in get_sibling');
     }),
     opcode('print_addr', (s, stringAddr) => {
         log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
-        process.stdout.write(zstringToAscii(s, s.getZString(stringAddr), true));
+        s._output_fn(zstringToAscii(s, s.getZString(stringAddr), true));
     }),
     opcode('call_1s', (s, routine) => {
         let resultVar = s.readByte();
@@ -315,7 +315,7 @@ log.warn('object is 0 in get_sibling');
     opcode('print_obj', (s, obj) => {
         log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
         let o = s.getObject(obj);
-        process.stdout.write(`${o.name}`);
+        s._output_fn(`${o.name}`);
     }),
     opcode('ret', (s, value) => {
         s.returnFromRoutine(value);
@@ -324,7 +324,7 @@ log.warn('object is 0 in get_sibling');
         s.pc = s.pc + s.toI16(addr) - 2;
     }),
     opcode('print_paddr', (s, packed_addr) => {
-        process.stdout.write(zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true)));
+        s._output_fn(zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true)));
     }),
     opcode('load', (s, variable) => {
         let resultVar = s.readByte();
@@ -398,11 +398,11 @@ let op0 = [
     opcode('rfalse', (s) => { s.returnFromRoutine(0); }),
     opcode('print', (s) => {
         log.debug(`${hex(s.op_pc)} print <inline-zstring>`);
-        process.stdout.write(zstringToAscii(s, s.readZString(), true));
+        s._output_fn(zstringToAscii(s, s.readZString(), true));
     }),
     opcode('print_ret', (s) => {
         log.debug(`${hex(s.op_pc)} print_ret`);
-        process.stdout.write(zstringToAscii(s, s.readZString(), true));
+        s._output_fn(zstringToAscii(s, s.readZString(), true));
         s.returnFromRoutine(1);
     }),
     nopcode(),
@@ -415,7 +415,7 @@ let op0 = [
     }),
     opcode('pop', unimplemented),
     opcode('quit', (s) => { s._quit = true; }),
-    opcode('new_line', (s) => { process.stdout.write('\n'); }),
+    opcode('new_line', (s) => { s._output_fn('\n'); }),
     opcode('show_status', (s) => { }),
     opcode('verify', unimplemented),
     opcode('extended', unimplemented),
@@ -453,10 +453,10 @@ let opv = [
     }),
     opcode('print_char', (s, ...chars) => {
         log.debug(`print_char(${chars})`);
-        process.stdout.write(chars.map( (c) => String.fromCharCode(c) ).join(''));
+        s._output_fn(chars.map( (c) => String.fromCharCode(c) ).join(''));
     }),
     opcode('print_num', (s, value) => {
-        process.stdout.write(s.toI16(value).toString());
+        s._output_fn(s.toI16(value).toString());
     }),
     opcode('random', (s, range) => {
         log.debug(`random(${range})`);
@@ -943,13 +943,14 @@ class GameObject {
 }
 
 export default class Game {
-    constructor(story_buffer, log_impl, user_input_cb) {
+    constructor(story_buffer, log_impl, user_input_cb, output_fn) {
         // XXX(toshok) global log
         log = log_impl;
 
         this._mem = story_buffer;
         this._log = log_impl;
         this._user_input_cb = user_input_cb;
+        this._output_fn = output_fn;
         this._quit = false;
         this._stack = [];
         this._callstack = [];
@@ -1028,32 +1029,44 @@ export default class Game {
     }
 
     continueAfterUserInput(input_state, input) {
-        let { text, parse } = input_state;
+        // probably not fully necessary, but unwind back to the event loop before transfering
+        // back to game code.
+        setTimeout ( () => {
+            let { text, parse } = input_state;
 
-        let max_input = this.getByte(text) + 1;
-        input = input.slice(0, max_input);
-        if (this._version < 5 || (this._version >= 5 && parse > 0)) {
-            this.tokenise(input, parse)
-        }
+            let max_input = this.getByte(text) + 1;
+            input = input.slice(0, max_input);
+            if (this._version < 5 || (this._version >= 5 && parse > 0)) {
+                this.tokenise(input, parse)
+            }
 
-        if (this._version >= 5) {
-            log.error("sread doesn't store the result anywhere");
-        }
+            if (this._version >= 5) {
+                log.error("sread doesn't store the result anywhere");
+            }
+
+            this.executeLoop();
+        }, 0);
     }
 
     execute() {
       this._pc = this.getWord(6);
+
+      this.executeLoop();
+    }
+
+    executeLoop() {
+try {
       while(!this._quit) {
           this._op_pc = this._pc;
-try {
           executeInstruction(this);
+      }
 }
 catch (e) {
     if (e instanceof SuspendForUserInput) {
-        this._user_input_cb(e.state);
+        // use setTimeout so we fully unwind before calling the input_cb
+        setTimeout(0, () => this._user_input_cb(e.state))
     }
 }
-      }
     }
 
     unpackRoutineAddress(addr) {
