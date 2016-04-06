@@ -62,4 +62,4 @@ console.log('continuing game');
     }
 }
 
-new EbozzBot(SLACK_TOKEN);
+new EbozzBot(fs.readFileSync('../EBOZZ_SLACK_TOKEN').toString().trim());
