@@ -1064,7 +1064,7 @@ try {
 catch (e) {
     if (e instanceof SuspendForUserInput) {
         // use setTimeout so we fully unwind before calling the input_cb
-        setTimeout(0, () => this._user_input_cb(e.state))
+        setTimeout(() => this._user_input_cb(e.state), 0)
     }
 }
     }
