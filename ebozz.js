@@ -1,6 +1,11 @@
 import * as fs from 'fs';
 import * as readline from 'readline-sync';
 
+class SuspendForUserInput {
+    constructor(state) { this._state = state; }
+    get state() { return this._state; }
+}
+
 // XXX(toshok) ugh, module-level global for logging.
 let log;
 
@@ -18,18 +23,7 @@ function illegalOpcode() {
 
 
 function opcode(mnemonic, impl) {
-    let wrapped_impl = (s, ...args) => {
-        try {
-            impl(s, ...args);
-        }
-        catch (e) {
-            log.error(`exception executing: ${mnemonic}`);
-            log.error(e.stack);
-            process.exit(-1);
-        }
-    };
-
-    return { mnemonic, impl: wrapped_impl };
+    return { mnemonic, impl };
 }
 
 function unimplemented() {
@@ -455,15 +449,7 @@ let opv = [
     opcode('sread', (s, text, parse, time, routine) => {
         let max_input = s.getByte(text) + 1;
         log.debug(`sread max_input=${max_input}`);
-        let input = readline.question('');
-        input = input.slice(0, max_input);
-        if (s._version < 5 || (s._version >= 5 && parse > 0)) {
-            s.tokenise(input, parse)
-        }
-
-        if (s._version >= 5) {
-            log.error("sread doesn't store the result anywhere");
-        }
+        throw new SuspendForUserInput({ text, parse, time, routine });
     }),
     opcode('print_char', (s, ...chars) => {
         log.debug(`print_char(${chars})`);
@@ -957,12 +943,13 @@ class GameObject {
 }
 
 export default class Game {
-    constructor(story_buffer, log_impl) {
+    constructor(story_buffer, log_impl, user_input_cb) {
         // XXX(toshok) global log
         log = log_impl;
 
         this._mem = story_buffer;
         this._log = log_impl;
+        this._user_input_cb = user_input_cb;
         this._quit = false;
         this._stack = [];
         this._callstack = [];
@@ -1040,11 +1027,32 @@ export default class Game {
         console.log();
     }
 
+    continueAfterUserInput(input_state, input) {
+        let { text, parse } = input_state;
+
+        let max_input = this.getByte(text) + 1;
+        input = input.slice(0, max_input);
+        if (this._version < 5 || (this._version >= 5 && parse > 0)) {
+            this.tokenise(input, parse)
+        }
+
+        if (this._version >= 5) {
+            log.error("sread doesn't store the result anywhere");
+        }
+    }
+
     execute() {
       this._pc = this.getWord(6);
       while(!this._quit) {
           this._op_pc = this._pc;
+try {
           executeInstruction(this);
+}
+catch (e) {
+    if (e instanceof SuspendForUserInput) {
+        this._user_input_cb(e.state);
+    }
+}
       }
     }
 

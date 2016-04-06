@@ -33,19 +33,23 @@ if (!file) {
 let b = fs.readFileSync(file);
 
 let log = new Log(parsed.debug);
-let state = new Game(b, log);
+let game;
+
+game = new Game(b, log, (input_state) => {
+    game.continueAfterUserInput(input_state, readline.question(''));
+});
 
 if (parsed.header)
-    state.dumpHeader();
+    game.dumpHeader();
 
 if (parsed.objectTree)
-    state.dumpObjectTable();
+    game.dumpObjectTable();
 
 if (parsed.dict)
-    state.dumpDictionary();
+    game.dumpDictionary();
 
 if (!parsed.noExec)
-    state.execute();
+    game.execute();
 
 process.exit(0);
 
