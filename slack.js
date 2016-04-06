@@ -6,11 +6,14 @@ import Log from './log';
 class EbozzBot extends Bot {
     constructor(token) {
         super({name: "ebozz", token});
+    }
 
+    run() {
         let output_buffer = '';
         let current_input_state;
 
         this.on('start', () => {
+            this.postMessageToChannel('ebozz-testing', 'starting up');
             this.user = this.users.filter((user) => user.name === this.name)[0];
 
             let game = new Game(fs.readFileSync('tests/zork1.dat'), new Log(false),
@@ -30,12 +33,13 @@ console.log('and waiting until we get user input');
 
                 if (this.isChatMessage(message) &&
                     this.isChannelConversation(message) &&
-                    !this.isFromMe(message)) {
+                    !this.isFromMe(message) &&
+                    this.isGameCommand(message)) {
 
 console.log(message, current_input_state);
                     if (current_input_state) {
 console.log('continuing game');
-                        game.continueAfterUserInput(current_input_state, message.text);
+                        game.continueAfterUserInput(current_input_state, this.getGameCommandText(message));
                         current_input_state = null;
                     }
                     else {
@@ -43,9 +47,15 @@ console.log('continuing game');
                     }
                 }
             });
-
             game.execute();
         });
+    }
+
+    isGameCommand(message) {
+        return message.text[0] === '$';
+    }
+    getGameCommandText(message) {
+        return message.text.slice(1);
     }
 
     isChatMessage(message) {
@@ -62,4 +72,5 @@ console.log('continuing game');
     }
 }
 
-new EbozzBot(fs.readFileSync('../EBOZZ_SLACK_TOKEN').toString().trim());
+let bot = new EbozzBot(fs.readFileSync('../EBOZZ_SLACK_TOKEN').toString().trim());
+bot.run();
