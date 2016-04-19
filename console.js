@@ -37,7 +37,8 @@ let game;
 
 game = new Game(b, log,
                 (input_state) => {
-                    game.continueAfterUserInput(input_state, readline.question(''));
+                    let input = readline.question('');
+                    game.continueAfterUserInput(input_state, input);
                 },
                 (str) => {
                     process.stdout.write(str);
@@ -54,6 +55,4 @@ if (parsed.dict)
 
 if (!parsed.noExec)
     game.execute();
-
-process.exit(0);
 

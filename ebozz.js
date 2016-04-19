@@ -1031,13 +1031,15 @@ export default class Game {
     continueAfterUserInput(input_state, input) {
         // probably not fully necessary, but unwind back to the event loop before transfering
         // back to game code.
-        setTimeout ( () => {
+        let timeoutId = setTimeout ( () => {
+	    clearTimeout(timeoutId);
+
             let { text, parse } = input_state;
 
             let max_input = this.getByte(text) + 1;
             input = input.slice(0, max_input);
             if (this._version < 5 || (this._version >= 5 && parse > 0)) {
-                this.tokenise(input, parse)
+                this.tokenise(input, parse);
             }
 
             if (this._version >= 5) {
@@ -1045,7 +1047,7 @@ export default class Game {
             }
 
             this.executeLoop();
-        }, 0);
+        });
     }
 
     execute() {
@@ -1055,20 +1057,26 @@ export default class Game {
     }
 
     executeLoop() {
-try {
-      while(!this._quit) {
-          this._op_pc = this._pc;
-          executeInstruction(this);
-      }
-}
-catch (e) {
-    if (e instanceof SuspendForUserInput) {
-        // use setTimeout so we fully unwind before calling the input_cb
-        setTimeout(() => this._user_input_cb(e.state), 0)
+	try {
+	    while(!this._quit) {
+		this._op_pc = this._pc;
+		executeInstruction(this);
+	    }
+	}
+	catch (e) {
+	    if (e instanceof SuspendForUserInput) {
+		// use setTimeout so we fully unwind before calling the input_cb
+		let timeoutId = setTimeout(() => {
+		    clearTimeout(timeoutId);
+		    try {
+			this._user_input_cb(e.state);
+		    } catch(e) {
+			console.log(e);
+		    }
+		});
+	    }
+	}
     }
-}
-    }
-
     unpackRoutineAddress(addr) {
         if (this._version <= 3) return 2 * addr;
         else if (this._version <= 5) return 4 * addr;
