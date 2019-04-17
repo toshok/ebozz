@@ -2,7 +2,9 @@
   "name": "ebozz",
   "version": "1.0.0-alpha.1",
   "description": "",
-  "main": "build/ebozz.js",
+  "bin": {
+    "ebozz": "build/ebozz.js",
+  },
   "files": "build/*.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
