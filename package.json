@@ -3,7 +3,7 @@
   "version": "1.0.0-alpha.2",
   "description": "",
   "bin": {
-    "ebozz": "build/ebozz.js",
+    "ebozz": "build/ebozz.js"
   },
   "files": "build/*.js",
   "scripts": {
