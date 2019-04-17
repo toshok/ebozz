@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import Bot from "slackbots";
 import * as fs from "fs";
 import Game from "./ebozz";

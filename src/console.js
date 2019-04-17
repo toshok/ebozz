@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import Log from "./log";
 import Game from "./ebozz";
 
