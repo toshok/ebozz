@@ -1,6 +1,6 @@
 {
   "name": "ebozz",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "",
   "bin": {
     "ebozz": "build/ebozz.js",
