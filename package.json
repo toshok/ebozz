@@ -3,7 +3,8 @@
   "version": "1.0.0-alpha.10",
   "description": "",
   "bin": {
-    "ebozz": "dist/console.js"
+    "ebozz": "dist/console.js",
+    "ebozz-slack": "dist/slack.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -21,7 +22,7 @@
     "ansicolors": "^0.3.2",
     "nopt": "^3.0.6",
     "readline-sync": "^1.4.1",
-    "slackbots": "^0.5.1"
+    "slackbots": "^1.2.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.3",

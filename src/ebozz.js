@@ -32,6 +32,7 @@ function opcode(mnemonic, impl) {
 }
 
 function unimplemented() {
+  console.error("unimplemented");
   throw new Error("unimplemented");
 }
 

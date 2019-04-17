@@ -4,18 +4,20 @@ import * as fs from "fs";
 import Game from "./ebozz";
 import Log from "./log";
 
-class EbozzBot extends Bot {
+const CHANNEL_NAME = "test";
+
+class EbozzBot {
   constructor(token) {
-    super({ name: "ebozz", token });
+    this.bot = new Bot({ name: "Ebozz", token });
   }
 
   run() {
     let output_buffer = "";
     let current_input_state;
 
-    this.on("start", () => {
-      this.postMessageToChannel("ebozz-testing", "starting up");
-      this.user = this.users.filter(user => user.name === this.name)[0];
+    this.bot.on("start", () => {
+      this.bot.postMessageToChannel(CHANNEL_NAME, "starting up");
+      this.user = this.bot.users.filter(user => user.name === this.name)[0];
 
       let game = new Game(
         fs.readFileSync("tests/zork1.dat"),
@@ -23,7 +25,7 @@ class EbozzBot extends Bot {
         // game suspended waiting for user input
         input_state => {
           console.log(`posting ${output_buffer}`);
-          this.postMessageToChannel("ebozz-testing", output_buffer);
+          this.bot.postMessageToChannel(CHANNEL_NAME, output_buffer);
           output_buffer = "";
           console.log("setting input_state to", input_state);
           console.log("and waiting until we get user input");
@@ -35,7 +37,7 @@ class EbozzBot extends Bot {
         }
       );
 
-      this.on("message", message => {
+      this.bot.on("message", message => {
         if (
           this.isChatMessage(message) &&
           this.isChannelConversation(message) &&
@@ -51,8 +53,8 @@ class EbozzBot extends Bot {
             );
             current_input_state = null;
           } else {
-            this.postMessageToChannel(
-              "ebozz-testing",
+            this.bot.postMessageToChannel(
+              CHANNEL_NAME,
               "not ready for input yet"
             );
           }
@@ -78,13 +80,15 @@ class EbozzBot extends Bot {
   }
 
   isFromMe(message) {
-    return message.bot_id === this.user.profile.bot_id;
+    console.log(this.user);
+    return false;
+    // return message.bot_id === this.user.profile.bot_id;
   }
 }
 
 let bot = new EbozzBot(
   fs
-    .readFileSync("../EBOZZ_SLACK_TOKEN")
+    .readFileSync("EBOZZ_SLACK_TOKEN")
     .toString()
     .trim()
 );

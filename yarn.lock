@@ -1590,7 +1590,7 @@ kind-of@^6.0.0, kind-of@^6.0.2:
   resolved "https://registry.yarnpkg.com/kind-of/-/kind-of-6.0.2.tgz#01146b36a6218e64e58f3a8d66de5d7fc6f6d051"
   integrity sha512-s5kLOcnH0XqDO+FvuaLX8DDjZ18CGFk7VygH40QoKPUQhW4e2rvM0rwUq0t8IQDOwYSeLK01U90OjzBTme2QqA==
 
-lodash@^4.17.11:
+lodash@^4.17.11, lodash@^4.17.2:
   version "4.17.11"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.11.tgz#b39ea6229ef607ecd89e2c8df12536891cac9b8d"
   integrity sha512-cQKh8igo5QUhZ7lg38DYWAxMvjSAKG0A8wGSVimP07SIUEK2UO+arSRKbRZWtelMtN5V0Hkwh5ryOto/SshYIg==
@@ -2168,15 +2168,17 @@ signal-exit@^3.0.0:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.2.tgz#b5fdc08f1287ea1178628e415e25132b73646c6d"
   integrity sha1-tf3AjxKH6hF4Yo5BXiUTK3NkbG0=
 
-slackbots@^0.5.1:
-  version "0.5.3"
-  resolved "https://registry.yarnpkg.com/slackbots/-/slackbots-0.5.3.tgz#7e98f9a02a7ab1e627c00b7f5a37d0cc7478410f"
-  integrity sha1-fpj5oCp6seYnwAt/WjfQzHR4QQ8=
+slackbots@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/slackbots/-/slackbots-1.2.0.tgz#a3f6517ef0ef2caf9affdd77c92b93ceca75d732"
+  integrity sha512-fld5BJ16QXavgalKbIAOIkycSObQyGXTWvjGSD/jJxI7c8lDf5aVFWWqNI2f/eAvEVU5KgaTwqmo80pHEcPZUA==
   dependencies:
     extend "^2.0.1"
+    lodash "^4.17.2"
     request "^2.56.0"
     vow "^0.4.9"
     ws "^1.0.1"
+    ws-heartbeat "^1.0.4"
 
 slash@^2.0.0:
   version "2.0.0"
@@ -2485,6 +2487,11 @@ wrappy@1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/wrappy/-/wrappy-1.0.2.tgz#b5243d8f3ec1aa35f1364605bc0d1036e30ab69f"
   integrity sha1-tSQ9jz7BqjXxNkYFvA0QNuMKtp8=
+
+ws-heartbeat@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/ws-heartbeat/-/ws-heartbeat-1.0.4.tgz#3b6d65e479f6f146d94b5703f2a17d45e6838202"
+  integrity sha512-OFr46ds6+OAXDdt9JXb7mA+xgNg1XN0qhrM5CmnbvTL2vx8jsgspUYSR75OKqkmM8s4R8aJ2AHhm7webf7RfOw==
 
 ws@^1.0.1:
   version "1.1.5"
