@@ -5,7 +5,7 @@
   "main": "build/ebozz.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel -d build/ ebozz.js console.js log.js slack.js",
+    "build": "babel -d build/ src/",
     "ebozz": "node build/console.js",
     "slackbot": "node build/slack.js",
     "zork1": "node build/console.js tests/zork1.dat",
