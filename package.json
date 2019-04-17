@@ -1,19 +1,19 @@
 {
   "name": "ebozz",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "",
   "bin": {
-    "ebozz": "build/ebozz.js"
+    "ebozz": "dist/ebozz.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel -d build/ src/",
-    "ebozz": "node build/console.js",
-    "slackbot": "node build/slack.js",
-    "zork1": "node build/console.js tests/zork1.dat",
-    "zork2": "node build/console.js tests/zork2.dat",
-    "zork3": "node build/console.js tests/zork3.dat",
-    "hhg": "node build/console.js tests/hitchhikers-guide.dat"
+    "build": "babel -d dist/ src/",
+    "ebozz": "node dist/console.js",
+    "slackbot": "node dist/slack.js",
+    "zork1": "node dist/console.js tests/zork1.dat",
+    "zork2": "node dist/console.js tests/zork2.dat",
+    "zork3": "node dist/console.js tests/zork3.dat",
+    "hhg": "node dist/console.js tests/hitchhikers-guide.dat"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "ISC",
