@@ -20,5 +20,8 @@
     "nopt": "^3.0.6",
     "readline-sync": "^1.4.1",
     "slackbots": "^0.5.1"
+  },
+  "devDependencies": {
+    "prettier": "^1.17.0"
   }
 }
