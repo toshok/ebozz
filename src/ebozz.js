@@ -1,6 +1,9 @@
 import * as fs from "fs";
 import * as readline from "readline-sync";
 
+import GameObject from "./GameObject";
+import zstringToAscii from "./zstringToAscii";
+
 class SuspendForUserInput {
   constructor(state) {
     this._state = state;
@@ -14,7 +17,7 @@ class SuspendForUserInput {
 let log;
 
 function hex(v) {
-  return v.toString(16);
+  return v !== undefined ? v.toString(16) : "";
 }
 
 function isZasciiInput(c) {
@@ -31,9 +34,11 @@ function opcode(mnemonic, impl) {
   return { mnemonic, impl };
 }
 
-function unimplemented() {
-  console.error("unimplemented");
-  throw new Error("unimplemented");
+function unimplementedOpcode(mnemonic) {
+  return opcode(mnemonic, () => {
+    console.error(`unimplemented opcode: ${mnemonic}`);
+    throw new Error(`unimplemented opcode: ${mnemonic}`);
+  });
 }
 
 function nopcode() {
@@ -45,11 +50,9 @@ let op2 = [
   opcode("je", (s, a, b, c, d) => {
     let [offset, condfalse] = s.readBranchOffset();
     log.debug(
-      `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${
-        c !== undefined ? hex(c) : ""
-      } ${d !== undefined ? hex(d) : ""} -> [${!condfalse}] ${hex(
-        s.pc + offset - 2
-      )}`
+      `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${hex(c)} ${hex(
+        d
+      )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
     );
     let cond =
       a === b || (c !== undefined && a === c) || (d !== undefined && a === d);
@@ -287,7 +290,7 @@ let op2 = [
       `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
     );
   }),
-  opcode("throw", unimplemented),
+  unimplementedOpcode("throw"),
   illegalOpcode(),
   illegalOpcode(),
   illegalOpcode()
@@ -381,18 +384,14 @@ let op1 = [
     log.debug(`${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`);
     s.callRoutine(routine, resultVar);
   }),
-  opcode("remove_obj", unimplemented),
+  unimplementedOpcode("remove_obj"),
   opcode("print_obj", (s, obj) => {
     log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
     let o = s.getObject(obj);
     s._output_fn(`${o.name}`);
   }),
-  opcode("ret", (s, value) => {
-    s.returnFromRoutine(value);
-  }),
-  opcode("jump", (s, addr) => {
-    s.pc = s.pc + s.toI16(addr) - 2;
-  }),
+  opcode("ret", (s, value) => s.returnFromRoutine(value)),
+  opcode("jump", (s, addr) => (s.pc = s.pc + s.toI16(addr) - 2)),
   opcode("print_paddr", (s, packed_addr) => {
     s._output_fn(
       zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true))
@@ -415,67 +414,9 @@ let op1 = [
   })
 ];
 
-let alphabet_table = [
-  /* A0 */ "abcdefghijklmnopqrstuvwxyz",
-  /* A1 */ "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-  /* A2 */ " \n0123456789.,!?_#'\"/\\-:()"
-];
-function zstringToAscii(s, zstr, expand) {
-  // various state things, like alphabet
-  let alphabet = 0;
-
-  function shiftAlphabet(stype) {
-    if (stype === 4) alphabet = 1;
-    else if (stype === 5) alphabet = 2;
-    else throw new Error("unknown shift type");
-  }
-
-  let rv = [];
-  for (let i = 0; i < zstr.length; i++) {
-    let z = zstr[i];
-    if (z < 6) {
-      switch (z) {
-        case 0:
-          rv.push(" ");
-          break;
-        case 1:
-        case 2:
-        case 3: {
-          let x = zstr[++i];
-          let entry = 32 * (z - 1) + x;
-          let abbrev_addr = s.getWord(s._abbrevs + entry * 2) * 2;
-          rv.push(...zstringToAscii(s, s.getZString(abbrev_addr), false));
-          break;
-        }
-        case 4:
-        case 5:
-          shiftAlphabet(z);
-          break;
-      }
-    } else if (z == 6 && alphabet === 2) {
-      // XXX Z-character 6 from A2 means that the two subsequent Z-characters specify a ten-bit ZSCII character code: the next Z-character gives the top 5 bits and the one after the bottom 5.
-      // we ignore for now.
-      let z1 = zstr[++i];
-      let z2 = zstr[++i];
-
-      let combined_char = (z1 << 5) + z2;
-      rv.push(String.fromCharCode(combined_char));
-      alphabet = 0;
-    } else {
-      rv.push(alphabet_table[alphabet][z - 6]);
-      alphabet = 0;
-    }
-  }
-  return rv.join("");
-}
-
 let op0 = [
-  opcode("rtrue", s => {
-    s.returnFromRoutine(1);
-  }),
-  opcode("rfalse", s => {
-    s.returnFromRoutine(0);
-  }),
+  opcode("rtrue", s => s.returnFromRoutine(1)),
+  opcode("rfalse", s => s.returnFromRoutine(0)),
   opcode("print", s => {
     log.debug(`${hex(s.op_pc)} print <inline-zstring>`);
     s._output_fn(zstringToAscii(s, s.readZString(), true));
@@ -486,14 +427,32 @@ let op0 = [
     s.returnFromRoutine(1);
   }),
   nopcode(),
-  opcode("save", unimplemented),
-  opcode("restore", unimplemented),
-  opcode("restart", unimplemented),
+  opcode("save", s => {
+    let [offset, condfalse] = s.readBranchOffset();
+
+    let saved = s.saveGame();
+    if (s._version < 5) {
+      s.doBranch(saved, condfalse, offset);
+    } else {
+      throw new Error("unimplemented save for version 5+");
+    }
+  }),
+  opcode("restore", s => {
+    let [offset, condfalse] = s.readBranchOffset();
+
+    let restored = s.restoreGame();
+    if (s._version < 5) {
+      s.doBranch(restored, condfalse, offset);
+    } else {
+      throw new Error("unimplemented restore for version 5+");
+    }
+  }),
+  unimplementedOpcode("restart"),
   opcode("ret_popped", s => {
     log.debug(`${hex(s.op_pc)} ret_popped`);
     s.returnFromRoutine(s.popStack());
   }),
-  opcode("pop", unimplemented),
+  unimplementedOpcode("pop"),
   opcode("quit", s => {
     s._quit = true;
   }),
@@ -501,9 +460,9 @@ let op0 = [
     s._output_fn("\n");
   }),
   opcode("show_status", s => {}),
-  opcode("verify", unimplemented),
-  opcode("extended", unimplemented),
-  opcode("piracy", unimplemented)
+  unimplementedOpcode("verify"),
+  unimplementedOpcode("extended"),
+  unimplementedOpcode("piracy")
 ];
 
 let opv = [
@@ -638,16 +597,16 @@ let opv = [
     s.storeVariable(resultVar, 0);
     // don't branch
   }),
-  opcode("not", unimplemented),
-  opcode("call_vn", unimplemented),
+  unimplementedOpcode("not"),
+  unimplementedOpcode("call_vn"),
   opcode("call_vn2", (s, routine, ...args) => {
     log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
     routine = s.unpackRoutineAddress(routine);
     s.callRoutine(routine, null, ...args);
   }),
-  opcode("tokenise", unimplemented),
-  opcode("encode_text", unimplemented),
-  opcode("copy_table", unimplemented),
+  unimplementedOpcode("tokenise"),
+  unimplementedOpcode("encode_text"),
+  unimplementedOpcode("copy_table"),
   opcode("print_table", (s, zscii_text, width, height, skip) => {
     log.debug("print_table");
     if (width) log.debug(`width = ${width}`);
@@ -795,6 +754,7 @@ function executeInstruction(s) {
       }
     }
   } catch (e) {
+    console.error(e);
     log.error(
       `error at pc=${hex(op_pc)}, opcode=${hex(opcode)}: ${e.toString()}`
     );
@@ -805,250 +765,15 @@ function executeInstruction(s) {
   //fs.writeSync(log_fp, '\n');
 }
 
-class GameObject {
-  constructor(state, objnum) {
-    this.state = state;
-    this.objnum = objnum;
-
-    if (this.state._version <= 3) {
-      this.objaddr = state._object_table + 31 * 2 + (objnum - 1) * 9;
-    } else {
-      this.objaddr = state._object_table + 63 * 2 + (objnum - 1) * 14;
-    }
-  }
-
-  dumpPropData(entry) {
-    let propDataPtr = this._propDataPtr(entry);
-    let propDataLen = GameObject._propDataLen(state, entry);
-    let data = [];
-    for (let i = 0; i < propDataLen; i++) {
-      data.push(this.state.getByte(propDataPtr + i));
-    }
-    return data.map(el => hex(el)).join(" ");
-  }
-  dump(indent = 0) {
-    let _indent = " . ".repeat(indent);
-
-    console.log(`${_indent}[${this.objnum}] "${this.name}"`);
-    console.log(`${_indent}  Properties:`);
-    let entry = this._firstPropEntry();
-    for (;;) {
-      let propNum = this._propEntryNum(entry);
-      if (propNum === 0) break;
-      console.log(
-        `${_indent}   ${hex(entry)} [${propNum}] ${this.dumpPropData(entry)}`
-      );
-      entry = this._nextPropEntry(entry);
-    }
-    for (let c = this.child; c !== null; c = c.sibling) {
-      c.dump(indent + 1);
-    }
-  }
-
-  get name() {
-    return zstringToAscii(
-      this.state,
-      this.state.getZString(this.propertyTableAddr + 1),
-      false
-    );
-  }
-
-  get parent() {
-    return this.state.getObject(
-      this.state._version <= 3
-        ? this.state.getByte(this.objaddr + 4)
-        : this.state.getWord(this.objaddr + 6)
-    );
-  }
-  set parent(po) {
-    let pobjnum = po === null ? 0 : po.objnum;
-    if (this.state._version <= 3) this.state.setByte(this.objaddr + 4, pobjnum);
-    else this.state.setWord(this.objaddr + 6, pobjnum);
-  }
-  get child() {
-    return this.state.getObject(
-      this.state._version <= 3
-        ? this.state.getByte(this.objaddr + 6)
-        : this.state.getWord(this.objaddr + 10)
-    );
-  }
-  set child(co) {
-    let cobjnum = co === null ? 0 : co.objnum;
-    if (this.state._version <= 3) this.state.setByte(this.objaddr + 6, cobjnum);
-    else this.state.setWord(this.objaddr + 10, cobjnum);
-  }
-  get sibling() {
-    return this.state.getObject(
-      this.state._version <= 3
-        ? this.state.getByte(this.objaddr + 5)
-        : this.state.getWord(this.objaddr + 8)
-    );
-  }
-  set sibling(so) {
-    let sobjnum = so === null ? 0 : so.objnum;
-    if (this.state._version <= 3) this.state.setByte(this.objaddr + 5, sobjnum);
-    else this.state.setWord(this.objaddr + 8, sobjnum);
-  }
-  get propertyTableAddr() {
-    return this.state.getWord(
-      this.objaddr + (this.state._version <= 3 ? 7 : 12)
-    );
-  }
-
-  hasAttribute(attr) {
-    if (this.state._version <= 3) {
-      if (attr >= 32) throw new Error("attribute number out of range");
-    } else {
-      if (attr >= 48) throw new Error("attribute number out of range");
-    }
-    let byte_index = Math.floor(attr / 8);
-    let value = this.state.getByte(this.objaddr + byte_index);
-    return (value & (0x80 >> (attr & 7))) !== 0;
-  }
-  setAttribute(attr) {
-    if (this.state._version <= 3) {
-      if (attr >= 32) throw new Error("attribute number out of range");
-    } else {
-      if (attr >= 48) throw new Error("attribute number out of range");
-    }
-    let byte_index = Math.floor(attr / 8);
-    let value = this.state.getByte(this.objaddr + byte_index);
-    value |= 0x80 >> (attr & 7);
-    this.state.setByte(this.objaddr + byte_index, value);
-  }
-  clearAttribute(attr) {
-    if (this.state._version <= 3) {
-      if (attr >= 32) throw new Error("attribute number out of range");
-    } else {
-      if (attr >= 48) throw new Error("attribute number out of range");
-    }
-    let byte_index = Math.floor(attr / 8);
-    let value = this.state.getByte(this.objaddr + byte_index);
-    value &= ~(0x80 >> (attr & 7));
-    this.state.setByte(this.objaddr + byte_index, value);
-  }
-
-  _nextPropEntry(propAddr) {
-    return propAddr + this._propEntrySize(propAddr);
-  }
-
-  _propEntrySize(propAddr) {
-    return GameObject._propDataLen(this.state, propAddr) + 1;
-  }
-
-  _propEntryNum(entryAddr) {
-    let mask = this.state._version <= 3 ? 0x1f : 0x3f;
-    let sizeByte = this.state.getByte(entryAddr);
-    return sizeByte & mask;
-  }
-
-  static _propDataLen(state, propAddr) {
-    let size = state.getByte(propAddr);
-
-    if (state._version <= 3) size >>= 5;
-    else {
-      if (!(size & 0x80)) size >>= 6;
-      else {
-        size = state.getByte(propAddr + 1);
-        size &= 0x3f;
-        if (size === 0) size = 64; /* demanded by Spec 1.0 */
-      }
-    }
-
-    return size + 1;
-  }
-
-  _propDataPtr(propAddr) {
-    if (this.state._version <= 3) {
-      return propAddr + 1;
-    } else {
-      let size = state.getByte(propAddr);
-      if (!(size & 0x80)) return propAddr + 1;
-      else return propAddr + 2;
-    }
-  }
-
-  _firstPropEntry() {
-    let addr = this.propertyTableAddr;
-    // skip the name
-    let nameLen = this.state.getByte(addr);
-    return addr + 1 + 2 * nameLen;
-  }
-
-  _getPropEntry(prop) {
-    let entry = this._firstPropEntry();
-    let propNum;
-    do {
-      propNum = this._propEntryNum(entry);
-      if (propNum === prop) return entry;
-      entry = this._nextPropEntry(entry);
-    } while (propNum > prop);
-    return 0;
-  }
-
-  getProperty(prop) {
-    let propAddr = this._getPropEntry(prop);
-    if (propAddr === null) {
-      throw new Error("default property values not supported");
-    }
-    let propLen = GameObject._propDataLen(this.state, propAddr);
-    switch (propLen) {
-      case 1:
-        return this.state.getByte(this._propDataPtr(propAddr));
-      case 2:
-        return this.state.getWord(this._propDataPtr(propAddr));
-      default:
-        throw new Error(`invalid property length in getProperty: ${propLen}`);
-    }
-  }
-
-  putProperty(prop, value) {
-    let propAddr = this._getPropEntry(prop);
-    if (propAddr === 0) throw new Error(`missing property ${prop}`);
-    let propLen = GameObject._propDataLen(this.state, propAddr);
-    switch (propLen) {
-      case 1:
-        return this.state.setByte(this._propDataPtr(propAddr), value & 0xff);
-      case 2:
-        return this.state.setWord(this._propDataPtr(propAddr), value & 0xffff);
-      default:
-        throw new Error(`invalid property length in getProperty: ${propLen}`);
-    }
-  }
-
-  getPropertyAddress(prop) {
-    let propAddr = this._getPropEntry(prop);
-    if (propAddr === 0) return 0;
-    return this._propDataPtr(propAddr);
-  }
-
-  static entryFromDataPtr(dataAddr) {
-    return dataAddr - 1;
-  }
-
-  static getPropertyLength(state, dataAddr) {
-    let entry = GameObject.entryFromDataPtr(dataAddr);
-
-    return GameObject._propDataLen(state, entry);
-  }
-
-  getNextProperty(prop) {
-    if (prop === 0) {
-      propAddr = this._firstPropEntry();
-    } else {
-      propAddr = this._getPropEntry(prop);
-    }
-    if (propAddr === 0) {
-      throw new Error("propAddr === null");
-    }
-    propAddr = this._nextPropEntry(propAddr);
-    if (propAddr === 0) return 0;
-    return _propEntryNum(propAddr);
-  }
-}
-
 export default class Game {
-  constructor(story_buffer, log_impl, user_input_cb, output_fn) {
+  constructor(
+    story_buffer,
+    log_impl,
+    user_input_cb,
+    output_fn,
+    save_fn,
+    restore_fn
+  ) {
     // XXX(toshok) global log
     log = log_impl;
 
@@ -1056,6 +781,8 @@ export default class Game {
     this._log = log_impl;
     this._user_input_cb = user_input_cb;
     this._output_fn = output_fn;
+    this._save_fn = save_fn;
+    this._restore_fn = restore_fn;
     this._quit = false;
     this._stack = [];
     this._callstack = [];
@@ -1093,6 +820,29 @@ export default class Game {
 
   get op_pc() {
     return this._op_pc;
+  }
+
+  saveGame() {
+    try {
+      this._save_fn(this._mem, this._stack, this._callstack);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
+
+  restoreGame() {
+    try {
+      let { mem, stack, callstack } = this._restore_fn();
+      this._mem = mem;
+      this._stack = stack;
+      this._callstack = callstack;
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   }
 
   dumpHeader() {
@@ -1186,9 +936,11 @@ export default class Game {
           try {
             this._user_input_cb(e.state);
           } catch (e) {
-            console.log(e);
+            console.error(e);
           }
         });
+      } else {
+        console.error(e);
       }
     }
   }
