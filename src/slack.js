@@ -111,7 +111,7 @@ function saveNotSupported() {
 class EbozzBot {
   constructor(token) {
     this.bot = new Bot({ name: BOT_NAME, token });
-    this.storage = new Storage("./slackbot-storage");
+    this.storage = new Storage(`./slackbot-storage/${token}`);
   }
 
   debugChannel(msg) {
@@ -124,11 +124,9 @@ class EbozzBot {
 
     this.bot.on("start", () => {
       this.debugChannel("starting up");
-      // console.log(this.bot);
       this.user = this.bot.users.filter(user => user.real_name === BOT_NAME)[0];
 
       this.bot.on("message", message => {
-        console.log(message);
         if (
           !this.isChatMessage(message) ||
           !this.isChannelConversation(message) ||
@@ -138,214 +136,221 @@ class EbozzBot {
         }
 
         let channelId = message.channel;
-        let channelName = this.bot.channels.find(c => c.id === channelId).name;
-        let channelState = this.storage.stateForChannel(channelId);
+        this.bot.channels = undefined; // XXX ugh?
+        this.bot.getChannels().then(({ channels }) => {
+          try {
+            let channelName = channels.find(c => c.id === channelId).name;
+            let channelState = this.storage.stateForChannel(channelId);
 
-        if (this.isAtMe(message)) {
-          // meta commands:
-          //  (list) games
-          //  play <gameid>
-          //  restart
-          //  quit
+            if (this.isAtMe(message)) {
+              // meta commands:
+              //  (list) games
+              //  play <gameid>
+              //  restart
+              //  quit
 
-          let atMe = `<@${this.user.id}>`;
-          let command = message.text.slice(atMe.length).trim();
+              let atMe = `<@${this.user.id}>`;
+              let command = message.text.slice(atMe.length).trim();
 
-          if (command == "games") {
-            // console.log(message);
-            let response = "Games available:\n";
-            for (let id of Object.keys(GAMES).sort()) {
-              let g = GAMES[id];
-              response += `*${id}*: _${g.name}_\n`;
-            }
+              if (command == "games") {
+                // console.log(message);
+                let response = "Games available:\n";
+                for (let id of Object.keys(GAMES).sort()) {
+                  let g = GAMES[id];
+                  response += `*${id}*: _${g.name}_\n`;
+                }
 
-            this.bot.postMessageToChannel(channelName, response);
-            return;
-          }
+                this.bot.postMessageToChannel(channelName, response);
+                return;
+              }
 
-          if (command.startsWith("play ")) {
-            let gameId = command.slice("play ".length).trim();
-            if (!GAMES[gameId]) {
-              this.bot.postMessageToChannel(
-                channelName,
-                `unknown game ${gameId}`
-              );
-              return;
-            }
+              if (command.startsWith("play ")) {
+                let gameId = command.slice("play ".length).trim();
+                if (!GAMES[gameId]) {
+                  this.bot.postMessageToChannel(
+                    channelName,
+                    `unknown game ${gameId}`
+                  );
+                  return;
+                }
 
-            this.debugChannel(
-              `starting game ${gameId} in channel ${channelName}`
-            );
-
-            let game = new Game(
-              fs.readFileSync(GAMES[gameId].path),
-              new Log(false),
-              // game suspended waiting for user input
-              input_state => {
-                // console.log(`posting ${output_buffer}`);
-                this.bot.postMessageToChannel(channelName, output_buffer);
-                output_buffer = "";
-                // console.log("setting input_state to", input_state);
-                // console.log("and waiting until we get user input");
-                this.storage.gameWaitingForInput(
-                  channelId,
-                  gameId,
-                  input_state,
-                  game.snapshotToBuffer()
+                this.debugChannel(
+                  `starting game ${gameId} in channel ${channelName}`
                 );
-              },
-              // output callback
-              str => {
-                output_buffer += str;
-              },
 
-              // save/restore callbacks
-              saveNotSupported,
-              saveNotSupported
-            );
+                let game = new Game(
+                  fs.readFileSync(GAMES[gameId].path),
+                  new Log(false),
+                  // game suspended waiting for user input
+                  input_state => {
+                    // console.log(`posting ${output_buffer}`);
+                    this.bot.postMessageToChannel(channelName, output_buffer);
+                    output_buffer = "";
+                    // console.log("setting input_state to", input_state);
+                    // console.log("and waiting until we get user input");
+                    this.storage.gameWaitingForInput(
+                      channelId,
+                      gameId,
+                      input_state,
+                      game.snapshotToBuffer()
+                    );
+                  },
+                  // output callback
+                  str => {
+                    output_buffer += str;
+                  },
 
-            game.execute();
-
-            return;
-          }
-
-          if (command == "restart") {
-            if (!channelState) {
-              this.bot.postMessage(
-                channelName,
-                "There isn't a game running in this channel."
-              );
-              return;
-            }
-
-            let { gameId } = channelState;
-            this.debugChannel(
-              `restarting game ${gameId} in channel ${channelName}`
-            );
-
-            let game = new Game(
-              fs.readFileSync(GAMES[gameId].path),
-              new Log(false),
-              // game suspended waiting for user input
-              input_state => {
-                // console.log(`posting ${output_buffer}`);
-                this.bot.postMessageToChannel(channelName, output_buffer);
-                output_buffer = "";
-                // console.log("setting input_state to", input_state);
-                // console.log("and waiting until we get user input");
-                this.storage.gameWaitingForInput(
-                  channelId,
-                  gameId,
-                  input_state,
-                  game.snapshotToBuffer()
+                  // save/restore callbacks
+                  saveNotSupported,
+                  saveNotSupported
                 );
-              },
-              // output callback
-              str => {
-                output_buffer += str;
-              },
 
-              // save/restore callbacks
-              saveNotSupported,
-              saveNotSupported
-            );
+                game.execute();
 
-            game.execute();
+                return;
+              }
 
-            return;
-          }
+              if (command == "restart") {
+                if (!channelState) {
+                  this.bot.postMessage(
+                    channelName,
+                    "There isn't a game running in this channel."
+                  );
+                  return;
+                }
 
-          if (command == "quit") {
-            if (!channelState) {
-              this.bot.postMessage(
-                channelName,
-                "There isn't a game running in this channel."
-              );
-              return;
-            }
+                let { gameId } = channelState;
+                this.debugChannel(
+                  `restarting game ${gameId} in channel ${channelName}`
+                );
 
-            let { gameId } = channelState;
+                let game = new Game(
+                  fs.readFileSync(GAMES[gameId].path),
+                  new Log(false),
+                  // game suspended waiting for user input
+                  input_state => {
+                    // console.log(`posting ${output_buffer}`);
+                    this.bot.postMessageToChannel(channelName, output_buffer);
+                    output_buffer = "";
+                    // console.log("setting input_state to", input_state);
+                    // console.log("and waiting until we get user input");
+                    this.storage.gameWaitingForInput(
+                      channelId,
+                      gameId,
+                      input_state,
+                      game.snapshotToBuffer()
+                    );
+                  },
+                  // output callback
+                  str => {
+                    output_buffer += str;
+                  },
 
-            this.debugChannel(
-              `quitting game ${gameId} in channel ${channelName}`
-            );
+                  // save/restore callbacks
+                  saveNotSupported,
+                  saveNotSupported
+                );
 
-            this.storage.gameStoppedInChannel(channelId);
-            this.bot.postMessageToChannel(
-              channelName,
-              `stopped game ${gameId}.`
-            );
-            return;
-          }
+                game.execute();
 
-          let response = `unrecognized command. commands are:
+                return;
+              }
+
+              if (command == "quit") {
+                if (!channelState) {
+                  this.bot.postMessage(
+                    channelName,
+                    "There isn't a game running in this channel."
+                  );
+                  return;
+                }
+
+                let { gameId } = channelState;
+
+                this.debugChannel(
+                  `quitting game ${gameId} in channel ${channelName}`
+                );
+
+                this.storage.gameStoppedInChannel(channelId);
+                this.bot.postMessageToChannel(
+                  channelName,
+                  `stopped game ${gameId}.`
+                );
+                return;
+              }
+
+              let response = `unrecognized command. commands are:
           *games*: shows all the games available for play
           *play <game id>*: starts a new game in this channel.  if another game is currently active, stops that one
           *restart*: restarts the current game
           *quit*: stops the current game
           `;
 
-          this.bot.postMessageToChannel(channelName, response);
-          return;
-        }
+              this.bot.postMessageToChannel(channelName, response);
+              return;
+            }
 
-        if (this.isGameCommand(message)) {
-          // console.log(message, current_input_state);
-          if (!channelState) {
-            this.bot.postMessageToChannel(
-              channelName,
-              "channel doesn't have an active game.  try 'play <gameid>'."
-            );
-            return;
-          }
-
-          let { gameId, snapshot, inputState } = channelState;
-
-          this.debugChannel(
-            `game command '${this.getGameCommandText(
-              message
-            )}', game ${gameId} in channel ${channelName}`
-          );
-
-          if (inputState) {
-            let game = Game.fromSnapshot(
-              snapshot,
-              new Log(false),
-              // game suspended waiting for user input
-              input_state => {
-                // console.log(`posting ${output_buffer}`);
-                this.bot.postMessageToChannel(channelName, output_buffer);
-                output_buffer = "";
-                // console.log("setting input_state to", input_state);
-                // console.log("and waiting until we get user input");
-                this.storage.gameWaitingForInput(
-                  channelId,
-                  gameId,
-                  input_state,
-                  game.snapshotToBuffer()
+            if (this.isGameCommand(message)) {
+              // console.log(message, current_input_state);
+              if (!channelState) {
+                this.bot.postMessageToChannel(
+                  channelName,
+                  "channel doesn't have an active game.  try 'play <gameid>'."
                 );
-              },
-              // output callback
-              str => {
-                output_buffer += str;
-              },
+                return;
+              }
 
-              // save/restore callbacks
-              saveNotSupported,
-              saveNotSupported
-            );
+              let { gameId, snapshot, inputState } = channelState;
 
-            game.continueAfterUserInput(
-              inputState,
-              this.getGameCommandText(message)
-            );
-          } else {
-            this.bot.postMessageToChannel(
-              channelName,
-              "not ready for input yet"
-            );
+              this.debugChannel(
+                `game command '${this.getGameCommandText(
+                  message
+                )}', game ${gameId} in channel ${channelName}`
+              );
+
+              if (inputState) {
+                let game = Game.fromSnapshot(
+                  snapshot,
+                  new Log(false),
+                  // game suspended waiting for user input
+                  input_state => {
+                    // console.log(`posting ${output_buffer}`);
+                    this.bot.postMessageToChannel(channelName, output_buffer);
+                    output_buffer = "";
+                    // console.log("setting input_state to", input_state);
+                    // console.log("and waiting until we get user input");
+                    this.storage.gameWaitingForInput(
+                      channelId,
+                      gameId,
+                      input_state,
+                      game.snapshotToBuffer()
+                    );
+                  },
+                  // output callback
+                  str => {
+                    output_buffer += str;
+                  },
+
+                  // save/restore callbacks
+                  saveNotSupported,
+                  saveNotSupported
+                );
+
+                game.continueAfterUserInput(
+                  inputState,
+                  this.getGameCommandText(message)
+                );
+              } else {
+                this.bot.postMessageToChannel(
+                  channelName,
+                  "not ready for input yet"
+                );
+              }
+            }
+          } catch (e) {
+            console.error(e);
           }
-        }
+        });
       });
     });
   }
@@ -374,10 +379,5 @@ class EbozzBot {
   }
 }
 
-let bot = new EbozzBot(
-  fs
-    .readFileSync("EBOZZ_SLACK_TOKEN")
-    .toString()
-    .trim()
-);
+let bot = new EbozzBot(process.env.EBOZZ_SLACK_TOKEN);
 bot.run();
