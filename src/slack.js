@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import Bot from "slackbots";
 import * as fs from "fs";
+import * as path from "path";
 import Game from "./ebozz";
 import Log from "./log";
 
@@ -28,17 +29,79 @@ const GAMES = {
   }
 };
 
-let channelState = {};
+class Storage {
+  constructor(rootDir) {
+    this.rootDir = rootDir;
+  }
 
-function gameStartedInChannel(channel, gameId, snapshot) {
-  channelState[channel] = { gameId, snapshot };
-}
-function gameWaitingForInput(channel, input_state, snapshot) {
-  console.log("snapshot length = ", snapshot.length);
-  channelState[channel] = { ...channelState[channel], input_state, snapshot };
-}
-function gameStoppedInChannel(channel) {
-  channelState[channel] = null;
+  directoryForChannel(channelId) {
+    return path.join(this.rootDir, channelId);
+  }
+
+  ensureDirectoryForChannel(channelId) {
+    let targetDir = this.directoryForChannel(channelId);
+    try {
+      fs.mkdirSync(targetDir, { recursive: true });
+      return targetDir;
+    } catch (e) {
+      if (e.code === "EEXIST") {
+        return targetDir;
+      }
+      throw e;
+    }
+  }
+
+  gameWaitingForInput(channelId, gameId, inputState, snapshot) {
+    let targetDir = this.ensureDirectoryForChannel(channelId);
+    let gameIdPath = path.join(targetDir, "gameId");
+    let inputStatePath = path.join(targetDir, "inputState");
+    let snapshotPath = path.join(targetDir, "snapshot.dat");
+
+    fs.writeFileSync(gameIdPath, gameId, { encoding: "utf8" });
+    fs.writeFileSync(inputStatePath, JSON.stringify(inputState), {
+      encoding: "utf8"
+    });
+    fs.writeFileSync(snapshotPath, snapshot, { encoding: "binary" });
+  }
+
+  gameStoppedInChannel(channelId) {
+    // this should rimraf the directory
+    let targetDir = this.directoryForChannel(channelId);
+    let gameIdPath = path.join(targetDir, "gameId");
+    let inputStatePath = path.join(targetDir, "inputState");
+    let snapshotPath = path.join(targetDir, "snapshot.dat");
+
+    try {
+      fs.unlinkSync(gameIdPath);
+    } catch (e) {}
+
+    try {
+      fs.unlinkSync(inputStatePath);
+    } catch (e) {}
+
+    try {
+      fs.unlinkSync(snapshotPath);
+    } catch (e) {}
+  }
+
+  stateForChannel(channelId) {
+    let targetDir = this.directoryForChannel(channelId);
+    let gameIdPath = path.join(targetDir, "gameId");
+    let inputStatePath = path.join(targetDir, "inputState");
+    let snapshotPath = path.join(targetDir, "snapshot.dat");
+
+    try {
+      let gameId = fs.readFileSync(gameIdPath, "utf8").toString();
+      let inputState = JSON.parse(
+        fs.readFileSync(inputStatePath, "utf8").toString()
+      );
+      let snapshot = fs.readFileSync(snapshotPath);
+      console.log(Object.prototype.toString.call(snapshot));
+      return { gameId, inputState, snapshot };
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 function saveNotSupported() {
@@ -48,6 +111,7 @@ function saveNotSupported() {
 class EbozzBot {
   constructor(token) {
     this.bot = new Bot({ name: BOT_NAME, token });
+    this.storage = new Storage("./slackbot-storage");
   }
 
   debugChannel(msg) {
@@ -75,6 +139,8 @@ class EbozzBot {
 
         let channelId = message.channel;
         let channelName = this.bot.channels.find(c => c.id === channelId).name;
+        let channelState = this.storage.stateForChannel(channelId);
+
         if (this.isAtMe(message)) {
           // meta commands:
           //  (list) games
@@ -107,6 +173,10 @@ class EbozzBot {
               return;
             }
 
+            this.debugChannel(
+              `starting game ${gameId} in channel ${channelName}`
+            );
+
             let game = new Game(
               fs.readFileSync(GAMES[gameId].path),
               new Log(false),
@@ -117,8 +187,9 @@ class EbozzBot {
                 output_buffer = "";
                 // console.log("setting input_state to", input_state);
                 // console.log("and waiting until we get user input");
-                gameWaitingForInput(
+                this.storage.gameWaitingForInput(
                   channelId,
+                  gameId,
                   input_state,
                   game.snapshotToBuffer()
                 );
@@ -139,7 +210,7 @@ class EbozzBot {
           }
 
           if (command == "restart") {
-            if (!channelState[channelId]) {
+            if (!channelState) {
               this.bot.postMessage(
                 channelName,
                 "There isn't a game running in this channel."
@@ -147,7 +218,11 @@ class EbozzBot {
               return;
             }
 
-            let { gameId } = channelState[channelId];
+            let { gameId } = channelState;
+            this.debugChannel(
+              `restarting game ${gameId} in channel ${channelName}`
+            );
+
             let game = new Game(
               fs.readFileSync(GAMES[gameId].path),
               new Log(false),
@@ -158,8 +233,9 @@ class EbozzBot {
                 output_buffer = "";
                 // console.log("setting input_state to", input_state);
                 // console.log("and waiting until we get user input");
-                gameWaitingForInput(
+                this.storage.gameWaitingForInput(
                   channelId,
+                  gameId,
                   input_state,
                   game.snapshotToBuffer()
                 );
@@ -180,15 +256,21 @@ class EbozzBot {
           }
 
           if (command == "quit") {
-            if (!channelState[channelId]) {
+            if (!channelState) {
               this.bot.postMessage(
                 channelName,
                 "There isn't a game running in this channel."
               );
               return;
             }
-            let { gameId } = channelState[channelId];
-            channelState[channelId] = undefined;
+
+            let { gameId } = channelState;
+
+            this.debugChannel(
+              `quitting game ${gameId} in channel ${channelName}`
+            );
+
+            this.storage.gameStoppedInChannel(channelId);
             this.bot.postMessageToChannel(
               channelName,
               `stopped game ${gameId}.`
@@ -209,8 +291,7 @@ class EbozzBot {
 
         if (this.isGameCommand(message)) {
           // console.log(message, current_input_state);
-
-          if (!channelState[channelId]) {
+          if (!channelState) {
             this.bot.postMessageToChannel(
               channelName,
               "channel doesn't have an active game.  try 'play <gameid>'."
@@ -218,10 +299,15 @@ class EbozzBot {
             return;
           }
 
-          let { snapshot, input_state } = channelState[channelId];
-          if (input_state) {
-            // console.log("continuing game");
+          let { gameId, snapshot, inputState } = channelState;
 
+          this.debugChannel(
+            `game command '${this.getGameCommandText(
+              message
+            )}', game ${gameId} in channel ${channelName}`
+          );
+
+          if (inputState) {
             let game = Game.fromSnapshot(
               snapshot,
               new Log(false),
@@ -232,8 +318,9 @@ class EbozzBot {
                 output_buffer = "";
                 // console.log("setting input_state to", input_state);
                 // console.log("and waiting until we get user input");
-                gameWaitingForInput(
+                this.storage.gameWaitingForInput(
                   channelId,
+                  gameId,
                   input_state,
                   game.snapshotToBuffer()
                 );
@@ -249,7 +336,7 @@ class EbozzBot {
             );
 
             game.continueAfterUserInput(
-              input_state,
+              inputState,
               this.getGameCommandText(message)
             );
           } else {
