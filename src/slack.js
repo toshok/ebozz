@@ -5,7 +5,7 @@ import Game from "./ebozz";
 import Log from "./log";
 
 const BOT_NAME = "Ebozz";
-const CHANNEL_NAME = "test";
+const CHANNEL_NAME = "ebozz-debug";
 
 const GAMES = {
   zork1: {
@@ -15,7 +15,7 @@ const GAMES = {
   zork2: { name: "Zork II: The Wizard of Frobozz", path: "./tests/zork2.dat" },
   zork3: { name: "Zork III: The Dungeon Master", path: "./tests/zork3.dat" },
   hitchhikers: {
-    name: "The Hitchhiker'S Guide To The Galaxy",
+    name: "The Hitchhiker's Guide To The Galaxy",
     path: "./tests/hitchhikersguide.dat"
   },
   wishbringer: {
@@ -41,6 +41,10 @@ function gameStoppedInChannel(channel) {
   channelState[channel] = null;
 }
 
+function saveNotSupported() {
+  throw new Error("no save support in slackbot.");
+}
+
 class EbozzBot {
   constructor(token) {
     this.bot = new Bot({ name: BOT_NAME, token });
@@ -60,6 +64,7 @@ class EbozzBot {
       this.user = this.bot.users.filter(user => user.real_name === BOT_NAME)[0];
 
       this.bot.on("message", message => {
+        console.log(message);
         if (
           !this.isChatMessage(message) ||
           !this.isChannelConversation(message) ||
@@ -68,20 +73,19 @@ class EbozzBot {
           return;
         }
 
-        let channelName = this.bot.channels.find(c => c.id === message.channel)
-          .name;
+        let channelId = message.channel;
+        let channelName = this.bot.channels.find(c => c.id === channelId).name;
         if (this.isAtMe(message)) {
-          // console.log(message);
           // meta commands:
-          //  list games
-          //  start <gameid>
+          //  (list) games
+          //  play <gameid>
           //  restart
           //  quit
 
           let atMe = `<@${this.user.id}>`;
           let command = message.text.slice(atMe.length).trim();
 
-          if (command == "list games") {
+          if (command == "games") {
             // console.log(message);
             let response = "Games available:\n";
             for (let id of Object.keys(GAMES).sort()) {
@@ -93,11 +97,11 @@ class EbozzBot {
             return;
           }
 
-          if (command.startsWith("start ")) {
-            let gameId = command.slice("start ".length).trim();
+          if (command.startsWith("play ")) {
+            let gameId = command.slice("play ".length).trim();
             if (!GAMES[gameId]) {
               this.bot.postMessageToChannel(
-                CHANNEL_NAME,
+                channelName,
                 `unknown game ${gameId}`
               );
               return;
@@ -109,12 +113,12 @@ class EbozzBot {
               // game suspended waiting for user input
               input_state => {
                 // console.log(`posting ${output_buffer}`);
-                this.bot.postMessageToChannel(CHANNEL_NAME, output_buffer);
+                this.bot.postMessageToChannel(channelName, output_buffer);
                 output_buffer = "";
                 // console.log("setting input_state to", input_state);
                 // console.log("and waiting until we get user input");
                 gameWaitingForInput(
-                  message.channel,
+                  channelId,
                   input_state,
                   game.snapshotToBuffer()
                 );
@@ -124,14 +128,9 @@ class EbozzBot {
                 output_buffer += str;
               },
 
-              // save callback
-              () => {
-                throw new Error("no save support in slackbot.");
-              },
-              // restore callback
-              () => {
-                throw new Error("no save support in slackbot.");
-              }
+              // save/restore callbacks
+              saveNotSupported,
+              saveNotSupported
             );
 
             game.execute();
@@ -140,19 +139,56 @@ class EbozzBot {
           }
 
           if (command == "restart") {
-            return;
-          }
-
-          if (command == "quit") {
-            if (!channelState[message.channel]) {
+            if (!channelState[channelId]) {
               this.bot.postMessage(
                 channelName,
                 "There isn't a game running in this channel."
               );
               return;
             }
-            let { gameId } = channelState[message.channel];
-            channelState[message.channel] = undefined;
+
+            let { gameId } = channelState[channelId];
+            let game = new Game(
+              fs.readFileSync(GAMES[gameId].path),
+              new Log(false),
+              // game suspended waiting for user input
+              input_state => {
+                // console.log(`posting ${output_buffer}`);
+                this.bot.postMessageToChannel(channelName, output_buffer);
+                output_buffer = "";
+                // console.log("setting input_state to", input_state);
+                // console.log("and waiting until we get user input");
+                gameWaitingForInput(
+                  channelId,
+                  input_state,
+                  game.snapshotToBuffer()
+                );
+              },
+              // output callback
+              str => {
+                output_buffer += str;
+              },
+
+              // save/restore callbacks
+              saveNotSupported,
+              saveNotSupported
+            );
+
+            game.execute();
+
+            return;
+          }
+
+          if (command == "quit") {
+            if (!channelState[channelId]) {
+              this.bot.postMessage(
+                channelName,
+                "There isn't a game running in this channel."
+              );
+              return;
+            }
+            let { gameId } = channelState[channelId];
+            channelState[channelId] = undefined;
             this.bot.postMessageToChannel(
               channelName,
               `stopped game ${gameId}.`
@@ -161,8 +197,8 @@ class EbozzBot {
           }
 
           let response = `unrecognized command. commands are:
-          *list games*: shows all the games available for play
-          *start <game id>*: starts a new game in this channel.  if another game is currently active, stops that one
+          *games*: shows all the games available for play
+          *play <game id>*: starts a new game in this channel.  if another game is currently active, stops that one
           *restart*: restarts the current game
           *quit*: stops the current game
           `;
@@ -174,15 +210,15 @@ class EbozzBot {
         if (this.isGameCommand(message)) {
           // console.log(message, current_input_state);
 
-          if (!channelState[message.channel]) {
+          if (!channelState[channelId]) {
             this.bot.postMessageToChannel(
-              CHANNEL_NAME,
-              "channel doesn't have an active game.  try 'start <gameid>'."
+              channelName,
+              "channel doesn't have an active game.  try 'play <gameid>'."
             );
             return;
           }
 
-          let { snapshot, input_state } = channelState[message.channel];
+          let { snapshot, input_state } = channelState[channelId];
           if (input_state) {
             // console.log("continuing game");
 
@@ -192,12 +228,12 @@ class EbozzBot {
               // game suspended waiting for user input
               input_state => {
                 // console.log(`posting ${output_buffer}`);
-                this.bot.postMessageToChannel(CHANNEL_NAME, output_buffer);
+                this.bot.postMessageToChannel(channelName, output_buffer);
                 output_buffer = "";
                 // console.log("setting input_state to", input_state);
                 // console.log("and waiting until we get user input");
                 gameWaitingForInput(
-                  message.channel,
+                  channelId,
                   input_state,
                   game.snapshotToBuffer()
                 );
@@ -207,14 +243,9 @@ class EbozzBot {
                 output_buffer += str;
               },
 
-              // save callback
-              () => {
-                throw new Error("no save support in slackbot.");
-              },
-              // restore callback
-              () => {
-                throw new Error("no save support in slackbot.");
-              }
+              // save/restore callbacks
+              saveNotSupported,
+              saveNotSupported
             );
 
             game.continueAfterUserInput(
@@ -223,7 +254,7 @@ class EbozzBot {
             );
           } else {
             this.bot.postMessageToChannel(
-              CHANNEL_NAME,
+              channelName,
               "not ready for input yet"
             );
           }
@@ -248,7 +279,7 @@ class EbozzBot {
   }
 
   isAtMe(message) {
-    return message.text.startsWith(`<@${this.user.id}>`);
+    return !message.subtype && message.text.startsWith(`<@${this.user.id}>`);
   }
 
   isFromMe(message) {
