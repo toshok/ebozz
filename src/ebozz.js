@@ -811,6 +811,93 @@ export default class Game {
     // every time we tokenise below.
   }
 
+  static fromSnapshot(snapshotBuffer, ...ctorArgs) {
+    let { mem, stack, callstack, pc } = Game.readSnapshotFromBuffer(
+      snapshotBuffer
+    );
+    let g = new Game(mem, ...ctorArgs);
+    g._stack = stack;
+    g._callstack = callstack;
+    g._pc = pc;
+    return g;
+  }
+
+  snapshotToBuffer() {
+    console.log(
+      `at snapshot time, mem is length ${this._mem.length}, and pc = ${this.pc}`
+    );
+    const chunkHeader = (type, length) => {
+      let b = Buffer.alloc(8);
+      b.writeUInt32LE(type, 0);
+      b.writeUInt32LE(length, 4);
+      return b;
+    };
+
+    let buffers = [];
+    buffers.push(chunkHeader(1, this._mem.length));
+    buffers.push(this._mem);
+
+    let stackString = JSON.stringify(this._stack);
+    buffers.push(chunkHeader(2, stackString.length));
+    buffers.push(Buffer.from(stackString, "utf8"));
+
+    let callstackString = JSON.stringify(this._callstack);
+    buffers.push(chunkHeader(3, callstackString.length));
+    buffers.push(Buffer.from(callstackString, "utf8"));
+
+    buffers.push(chunkHeader(4, 4));
+    let b = Buffer.alloc(4);
+    b.writeUInt32LE(this._pc);
+    buffers.push(b);
+
+    return Buffer.concat(buffers);
+  }
+
+  static readSnapshotFromBuffer(b) {
+    let mem, stack, callstack, pc;
+    let p = 0;
+
+    let readChunk = () => {
+      let type = b.readUInt32LE(p);
+      p += 4;
+      let length = b.readUInt32LE(p);
+      p += 4;
+
+      switch (type) {
+        case 1: // memory
+          mem = b.slice(p, p + length);
+          break;
+        case 2: // stack
+          stack = JSON.parse(b.toString("utf8", p, p + length));
+          break;
+        case 3: // callstack
+          callstack = JSON.parse(b.toString("utf8", p, p + length));
+          break;
+        case 4: // registers
+          pc = b.readUInt32LE(p);
+          break;
+      }
+      p += length;
+    };
+
+    // we write four chunks so far
+    readChunk();
+    readChunk();
+    readChunk();
+    readChunk();
+
+    console.log(
+      `at snapshot time, mem is length ${mem.length}, and pc = ${pc}`
+    );
+
+    return {
+      mem,
+      stack,
+      callstack,
+      pc
+    };
+  }
+
   set pc(addr) {
     this._pc = addr;
   }
@@ -911,14 +998,12 @@ export default class Game {
       if (this._version >= 5) {
         log.error("sread doesn't store the result anywhere");
       }
-
       this.executeLoop();
     });
   }
 
   execute() {
     this._pc = this.getWord(6);
-
     this.executeLoop();
   }
 
