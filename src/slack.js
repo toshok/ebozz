@@ -29,6 +29,14 @@ const GAMES = {
   }
 };
 
+const USAGE = `commands are:
+*games*: shows all the games available for play
+*play <game id>*: starts a new game in this channel.  if another game is currently active, stops that one
+*restart*: restarts the current game
+*quit*: stops the current game
+*help*: prints this
+`;
+
 class Storage {
   constructor(rootDir) {
     this.rootDir = rootDir;
@@ -279,13 +287,12 @@ class EbozzBot {
                 return;
               }
 
-              let response = `unrecognized command. commands are:
-          *games*: shows all the games available for play
-          *play <game id>*: starts a new game in this channel.  if another game is currently active, stops that one
-          *restart*: restarts the current game
-          *quit*: stops the current game
-          `;
+              if (command === "help") {
+                this.bot.postMessageToChannel(channelName, USAGE);
+                return;
+              }
 
+              let response = `unrecognized command ${command}.\n${USAGE}`;
               this.bot.postMessageToChannel(channelName, response);
               return;
             }
