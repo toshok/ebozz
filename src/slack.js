@@ -104,7 +104,6 @@ class Storage {
         fs.readFileSync(inputStatePath, "utf8").toString()
       );
       let snapshot = fs.readFileSync(snapshotPath);
-      console.log(Object.prototype.toString.call(snapshot));
       return { gameId, inputState, snapshot };
     } catch (e) {
       return null;
