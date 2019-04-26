@@ -112,7 +112,8 @@ let op2 = [
       log.error("child object is null in jin");
       s.doBranch(false, condfalse, offset);
     } else {
-      s.doBranch(o1.parent.objnum === obj2, condfalse, offset);
+      let parentObjNum = o1.parent ? o1.parent.objnum : 0;
+      s.doBranch(parentObjNum === obj2, condfalse, offset);
     }
   }),
   opcode("test", (s, bitmap, flags) => {
