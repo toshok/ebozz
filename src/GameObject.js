@@ -123,6 +123,38 @@ export default class GameObject {
     this.state.setByte(this.objaddr + byte_index, value);
   }
 
+  unlink() {
+    // get our parent object, since we clear it below
+    const parent = this.parent;
+    if (!parent) {
+      // no parent, nothing to be done
+      return;
+    }
+
+    const sibling = this.sibling;
+
+    this.parent = null;
+    this.sibling = null;
+
+    // if we're the first child, it's easy
+    if (parent.child.objnum == this.objnum) {
+      parent.child = sibling;
+      return;
+    }
+
+    // otherwise loop through children looking for the child before us
+    for (let c = parent.child; c !== null; c = c.sibling) {
+      if (c.sibling && c.sibling.objnum === this.objnum) {
+        // found the previous node.  skip ourselves and return.
+        c.sibling = sibling;
+        return;
+      }
+    }
+
+    // if we didn't find the previous child, something is definitely wrong
+    throw new Error("sibling list is in a bad state, couldn't find prev node");
+  }
+
   _nextPropEntry(propAddr) {
     return propAddr + this._propEntrySize(propAddr);
   }
@@ -228,6 +260,7 @@ export default class GameObject {
   }
 
   getNextProperty(prop) {
+    let propAddr;
     if (prop === 0) {
       propAddr = this._firstPropEntry();
     } else {
@@ -238,6 +271,6 @@ export default class GameObject {
     }
     propAddr = this._nextPropEntry(propAddr);
     if (propAddr === 0) return 0;
-    return _propEntryNum(propAddr);
+    return this._propEntryNum(propAddr);
   }
 }

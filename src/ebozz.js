@@ -385,7 +385,11 @@ let op1 = [
     log.debug(`${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`);
     s.callRoutine(routine, resultVar);
   }),
-  unimplementedOpcode("remove_obj"),
+  opcode("remove_obj", (s, obj) => {
+    log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
+    let o = s.getObject(obj);
+    o.unlink();
+  }),
   opcode("print_obj", (s, obj) => {
     log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
     let o = s.getObject(obj);
@@ -1213,8 +1217,8 @@ export default class Game {
         log.debug("     returning true");
         this.returnFromRoutine(1);
       } else {
-        log.debug("     taking branch!");
         this._pc = this._pc + offset - 2;
+        log.debug(`     taking branch to ${this._pc}!`);
       }
     }
   }
