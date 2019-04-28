@@ -189,7 +189,7 @@ export default class GameObject {
     if (this.state._version <= 3) {
       return propAddr + 1;
     } else {
-      let size = state.getByte(propAddr);
+      let size = this.state.getByte(propAddr);
       if (!(size & 0x80)) return propAddr + 1;
       else return propAddr + 2;
     }

@@ -1,0 +1,53 @@
+## zork1 walkthrough
+##
+## from http://www.oocities.org/timessquare/castle/2701/z1walk0.html
+
+# Part 1  Surface and Jewelled Egg
+north
+north
+up
+get egg
+down
+north
+take leaves
+drop leaves
+east
+south
+west
+open window
+west
+open sack
+take garlic
+west
+drop garlic
+take lamp
+east
+up
+turn on lamp
+take knife
+take rope
+down
+turn off lamp
+west
+drop knife
+drop rope
+open trophy case
+put egg in trophy case
+close trophy case
+
+
+# Part 2   Chimney and Painting
+move rug
+open trapdoor
+down
+turn on lamp
+south
+east
+take painting
+north
+up
+turn off lamp
+west
+open trophy case
+put painting in trophy case
+close trophy case

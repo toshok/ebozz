@@ -377,7 +377,7 @@ let op1 = [
   }),
   opcode("print_addr", (s, stringAddr) => {
     log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
-    s._output_fn(zstringToAscii(s, s.getZString(stringAddr), true));
+    s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
   }),
   opcode("call_1s", (s, routine) => {
     let resultVar = s.readByte();
@@ -393,12 +393,13 @@ let op1 = [
   opcode("print_obj", (s, obj) => {
     log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
     let o = s.getObject(obj);
-    s._output_fn(`${o.name}`);
+    s._screen.print(s, `${o.name}`);
   }),
   opcode("ret", (s, value) => s.returnFromRoutine(value)),
   opcode("jump", (s, addr) => (s.pc = s.pc + s.toI16(addr) - 2)),
   opcode("print_paddr", (s, packed_addr) => {
-    s._output_fn(
+    s._screen.print(
+      s,
       zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true))
     );
   }),
@@ -424,11 +425,11 @@ let op0 = [
   opcode("rfalse", s => s.returnFromRoutine(0)),
   opcode("print", s => {
     log.debug(`${hex(s.op_pc)} print <inline-zstring>`);
-    s._output_fn(zstringToAscii(s, s.readZString(), true));
+    s._screen.print(s, zstringToAscii(s, s.readZString(), true));
   }),
   opcode("print_ret", s => {
     log.debug(`${hex(s.op_pc)} print_ret`);
-    s._output_fn(zstringToAscii(s, s.readZString(), true));
+    s._screen.print(s, zstringToAscii(s, s.readZString(), true));
     s.returnFromRoutine(1);
   }),
   nopcode(),
@@ -462,9 +463,11 @@ let op0 = [
     s._quit = true;
   }),
   opcode("new_line", s => {
-    s._output_fn("\n");
+    s._screen.print(s, "\n");
   }),
-  opcode("show_status", s => {}),
+  opcode("show_status", s => {
+    unimplemented();
+  }),
   unimplementedOpcode("verify"),
   unimplementedOpcode("extended"),
   unimplementedOpcode("piracy")
@@ -507,10 +510,10 @@ let opv = [
   }),
   opcode("print_char", (s, ...chars) => {
     log.debug(`print_char(${chars})`);
-    s._output_fn(chars.map(c => String.fromCharCode(c)).join(""));
+    s._screen.print(s, chars.map(c => String.fromCharCode(c)).join(""));
   }),
   opcode("print_num", (s, value) => {
-    s._output_fn(s.toI16(value).toString());
+    s._screen.print(s, s.toI16(value).toString());
   }),
   opcode("random", (s, range) => {
     log.debug(`random(${range})`);
@@ -530,10 +533,10 @@ let opv = [
     s.storeVariable(variable, s.popStack());
   }),
   opcode("split_window", (s, lines) => {
-    log.warn(`split_window ${lines} -- not implemented`);
+    s._screen.splitWindow(s, lines);
   }),
   opcode("set_window", (s, window) => {
-    log.warn(`set_window ${window} -- not implemented`);
+    s._screen.setOutputWindow(s, window);
   }),
   opcode("call_vs2", (s, routine, ...args) => {
     let resultVar = s.readByte();
@@ -544,35 +547,58 @@ let opv = [
     s.callRoutine(routine, resultVar, ...args);
   }),
   opcode("erase_window", (s, window) => {
-    log.warn(`erase_window ${window} -- not implemented`);
+    s._screen.clearWindow(s, window);
   }),
   opcode("erase_line", (s, value) => {
-    log.warn(`erase_line ${value} -- not implemented`);
+    s._screen.clearLine(s, value);
   }),
   opcode("set_cursor", (s, line, column, window) => {
-    log.warn(`set_cursor ${line} x ${column}, ${window} -- not implemented`);
+    if (s._version >= 6) {
+      if (line === -1) {
+        s._screen.hideCursor(s);
+        return;
+      }
+      if (line === -2) {
+        s._screen.showCursor(s);
+        return;
+      }
+    }
+    if (s._version < 6) {
+      window = s._screen.getOutputWindow(s);
+    }
+
+    s._screen.setCursorPosition(s, line, column, window);
   }),
   opcode("get_cursor", (s, array) => {
     log.warn(`get_cursor ${array} -- not implemented`);
   }),
   opcode("set_text_style", (s, style) => {
-    log.warn(`set_text_style ${style} -- no implemented`);
+    s._screen.setTextStyle(s, style);
   }),
   opcode("buffer_mode", (s, flag) => {
-    log.warn(`buffer_mode ${flag} -- not implemented`);
+    s._screen.setBufferMode(s, flag);
   }),
   opcode("output_stream", (s, number, table, width) => {
-    log.warn(`output_stream -- not implemented`);
+    let streamNumber = s.toI16(number);
+    if (streamNumber === 0) {
+      // why emit this opcode at all?
+      return;
+    }
+    if (streamNumber > 0) {
+      s._screen.enableOutputStream(s, streamNumber, table, width);
+      return;
+    }
+    s._screen.disableOutputStream(s, -streamNumber, table, width);
   }),
   opcode("input_stream", (s, number) => {
-    log.warn(`input_stream ${number} -- not implemented`);
+    s._screen.selectInputStream(s, s.toI16(number));
   }),
   opcode("sound_effect", (s, number, effect, volume, routine) => {
     log.warn(`sound_effect ${number} -- not implemented`);
   }),
   opcode("read_char", (s, dev, time, routine) => {
     let resultVar = s.readByte();
-    readline.keyIn("", { hideEchoBack: true, mask: "" });
+    //    readline.keyIn("", { hideEchoBack: true, mask: "" });
     s.storeVariable(resultVar, 32 /*XXX*/);
   }),
   opcode("scan_table", (s, x, table, len, form = 0x82) => {
@@ -609,7 +635,9 @@ let opv = [
     routine = s.unpackRoutineAddress(routine);
     s.callRoutine(routine, null, ...args);
   }),
-  unimplementedOpcode("tokenise"),
+  opcode("tokenise", (s, text, tokenBuffer, dict, flag) => {
+    unimplemented();
+  }),
   unimplementedOpcode("encode_text"),
   unimplementedOpcode("copy_table"),
   opcode("print_table", (s, zscii_text, width, height, skip) => {
@@ -774,20 +802,19 @@ export default class Game {
   constructor(
     story_buffer,
     log_impl,
-    user_input_cb,
-    output_fn,
-    save_fn,
+    screen,
+    storage
+    /*
     restore_fn
+    */
   ) {
     // XXX(toshok) global log
     log = log_impl;
 
     this._mem = story_buffer;
     this._log = log_impl;
-    this._user_input_cb = user_input_cb;
-    this._output_fn = output_fn;
-    this._save_fn = save_fn;
-    this._restore_fn = restore_fn;
+    this._screen = screen;
+    this._storage = storage;
     this._quit = false;
     this._stack = [];
     this._callstack = [];
@@ -797,6 +824,8 @@ export default class Game {
     this._abbrevs = this.getWord(0x18);
     this._object_table = this.getWord(0x0a);
     this._dict = this.getWord(0x08);
+
+    log.info(`game version: ${this._version}`);
 
     if (this._version === 6 || this._version === 7) {
       this._routine_offset = this.getWord(0x28);
@@ -811,6 +840,8 @@ export default class Game {
 
     this._mem[0x20] = 0xff; // 255 = infinite height
     this._mem[0x21] = 80; // XXX 80-character wide terminal
+
+    // turn off split screen
 
     // get the word separators out of the dictionary here so we don't have to do it
     // every time we tokenise below.
@@ -916,7 +947,7 @@ export default class Game {
 
   saveGame() {
     try {
-      this._save_fn(this._mem, this._stack, this._callstack);
+      this._storage.saveSnapshot(this, this._mem, this._stack, this._callstack);
       return true;
     } catch (e) {
       console.error(e);
@@ -926,7 +957,7 @@ export default class Game {
 
   restoreGame() {
     try {
-      let { mem, stack, callstack } = this._restore_fn();
+      let { mem, stack, callstack } = this._storage.loadSnapshot(this);
       this._mem = mem;
       this._stack = stack;
       this._callstack = callstack;
@@ -1024,7 +1055,7 @@ export default class Game {
         let timeoutId = setTimeout(() => {
           clearTimeout(timeoutId);
           try {
-            this._user_input_cb(e.state);
+            this._screen.getInputFromUser(this, e.state);
           } catch (e) {
             console.error(e);
           }
@@ -1279,7 +1310,9 @@ export default class Game {
   }
 
   lookupToken(dict, encoded_token_words) {
-    if (this._version > 3) unimplemented();
+    if (this._version > 3) {
+      unimplemented();
+    }
 
     // skip the separators
     let num_sep = this.getByte(dict);
@@ -1346,7 +1379,7 @@ export default class Game {
     parsebuffer++;
     let count = this.getByte(parsebuffer);
     parsebuffer++;
-    fs.writeSync(log_fp, ` max = ${max}, count = ${count} tokens = [`);
+    log.debug(` max = ${max}, count = ${count} tokens = [`);
     for (let i = 0; i < count; i++) {
       let addr = this.getWord(parsebuffer);
       parsebuffer += 2;
@@ -1354,9 +1387,9 @@ export default class Game {
       parsebuffer++;
       let from = this.getByte(parsebuffer);
       parsebuffer++;
-      fs.writeSync(log_fp, ` (${hex(addr)}, ${hex(length)}, ${hex(from)})`);
+      log.debug(` (${hex(addr)}, ${hex(from)}, ${hex(length)})`);
     }
-    fs.writeSync(log_fp, " ]");
+    log.debug(" ]");
   }
 
   tokenise_word(inputbuffer, start, end, parsebuffer) {
@@ -1400,38 +1433,43 @@ export default class Game {
       return sep_zscii.indexOf(c.charCodeAt(0)) !== -1;
     }
 
-    function toZscii(inputchar) {}
+    const CHAR_CLASS_SPACE = 2;
+    const CHAR_CLASS_SEP = 1;
+    const CHAR_CLASS_WORD = 0;
+
     function char_class(c) {
-      if (c === " ") return 2;
-      if (is_separator(c)) return 1;
-      return 0; // words
+      if (c === " ") return CHAR_CLASS_SPACE;
+      if (is_separator(c)) return CHAR_CLASS_SEP;
+      return CHAR_CLASS_WORD;
     }
 
     let split_string = inputtext.split("");
     let classes = split_string.map(char_class);
-    let start = 0;
-    for (; start < classes.length; start++) {
-      if (classes[start] === 2) {
+    for (let start = 0; start < classes.length; start++) {
+      if (classes[start] === CHAR_CLASS_SPACE) {
         continue;
-      } else if (classes[start] === 1) {
+      }
+      if (classes[start] === CHAR_CLASS_SEP) {
         this.tokenise_word(inputtext, start, start + 1, parsebuffer);
         continue;
-      } else {
-        let end = start + 1;
-        for (; end < classes.length; end++) {
-          if (classes[end] !== 0) {
-            this.tokenise_word(inputtext, start, end, parsebuffer);
-            start = end - 1;
-            break;
-          }
-        }
-        if (end === classes.length) {
+      }
+
+      let end;
+
+      for (end = start + 1; end < classes.length; end++) {
+        if (classes[end] !== CHAR_CLASS_WORD) {
           this.tokenise_word(inputtext, start, end, parsebuffer);
+          start = end - 1;
           break;
         }
       }
+
+      if (end === classes.length) {
+        this.tokenise_word(inputtext, start, end, parsebuffer);
+        break;
+      }
     }
 
-    //this.dumpParsebuffer(parsebuffer);
+    this.dumpParsebuffer(parsebuffer);
   }
 }

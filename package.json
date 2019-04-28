@@ -14,12 +14,19 @@
     "zork1": "node dist/console.js tests/zork1.dat",
     "zork2": "node dist/console.js tests/zork2.dat",
     "zork3": "node dist/console.js tests/zork3.dat",
-    "hhg": "node dist/console.js tests/hitchhikers-guide.dat"
+    "hhg": "node dist/console.js tests/hitchhikers-guide.dat",
+    "trinity": "node dist/console.js tests/trinity.dat",
+    "wishbringer": "node dist/console.js tests/wishbringer.dat",
+    "test-zork1": "node dist/test-runner.js zork1",
+    "test-zork3": "node dist/test-runner.js zork3",
+    "test-wishbringer": "node dist/test-runner.js wishbringer",
+    "test-hhg": "node dist/test-runner.js hitchhikers-guide"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "ISC",
   "dependencies": {
     "ansicolors": "^0.3.2",
+    "blessed": "^0.1.81",
     "nopt": "^3.0.6",
     "readline-sync": "^1.4.1",
     "slackbots": "^1.2.0"
