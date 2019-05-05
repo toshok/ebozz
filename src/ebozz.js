@@ -34,6 +34,13 @@ function opcode(mnemonic, impl) {
   return { mnemonic, impl };
 }
 
+function unimplemented(msg) {
+  if (msg) {
+    throw new Error(`unimplemented: ${msg}`);
+  }
+  throw new Error("unimplemented");
+}
+
 function unimplementedOpcode(mnemonic) {
   return opcode(mnemonic, () => {
     console.error(`unimplemented opcode: ${mnemonic}`);
@@ -275,6 +282,10 @@ let op2 = [
   }),
   opcode("call_2s", (s, routine, arg1) => {
     let resultVar = s.readByte();
+    if (routine === 0) {
+      s.storeVariable(resultVar, 0);
+      return;
+    }
     routine = s.unpackRoutineAddress(routine);
     log.debug(
       `${hex(s.op_pc)} call_2s ${hex(routine)} ${arg1} -> (${hex(resultVar)})`
@@ -282,6 +293,9 @@ let op2 = [
     s.callRoutine(routine, resultVar, arg1);
   }),
   opcode("call_2n", (s, routine, arg1) => {
+    if (routine === 0) {
+      return;
+    }
     log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
     routine = s.unpackRoutineAddress(routine);
     s.callRoutine(routine, null, arg1);
@@ -381,6 +395,10 @@ let op1 = [
   }),
   opcode("call_1s", (s, routine) => {
     let resultVar = s.readByte();
+    if (routine === 0) {
+      s.storeVariable(resultVar, 0);
+      return;
+    }
     routine = s.unpackRoutineAddress(routine);
     log.debug(`${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`);
     s.callRoutine(routine, resultVar);
@@ -413,7 +431,10 @@ let op1 = [
     value = value ^ 0xffff;
     s.storeVariable(resultVar, value);
   }),
-  opcode("call_1n", s => {
+  opcode("call_1n", (s, routine) => {
+    if (routine === 0) {
+      return;
+    }
     routine = s.unpackRoutineAddress(routine);
     log.debug(`${hex(s.op_pc)} call_1n ${hex(routine)}`);
     s.callRoutine(routine, null);
@@ -476,6 +497,9 @@ let op0 = [
 let opv = [
   opcode("call", (s, routine, ...args) => {
     let resultVar = s.readByte();
+    if (routine === 0) {
+      return;
+    }
     routine = s.unpackRoutineAddress(routine);
     log.debug(
       `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
@@ -540,6 +564,10 @@ let opv = [
   }),
   opcode("call_vs2", (s, routine, ...args) => {
     let resultVar = s.readByte();
+    if (routine === 0) {
+      s.storeVariable(resultVar, 0);
+      return;
+    }
     routine = s.unpackRoutineAddress(routine);
     log.debug(
       `${hex(s.op_pc)} call_vs2 ${hex(routine)} ${args} -> (${hex(resultVar)})`
@@ -631,6 +659,9 @@ let opv = [
   unimplementedOpcode("not"),
   unimplementedOpcode("call_vn"),
   opcode("call_vn2", (s, routine, ...args) => {
+    if (routine === 0) {
+      return;
+    }
     log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
     routine = s.unpackRoutineAddress(routine);
     s.callRoutine(routine, null, ...args);
@@ -1310,10 +1341,6 @@ export default class Game {
   }
 
   lookupToken(dict, encoded_token_words) {
-    if (this._version > 3) {
-      unimplemented();
-    }
-
     // skip the separators
     let num_sep = this.getByte(dict);
     dict += num_sep + 1;
@@ -1324,35 +1351,55 @@ export default class Game {
     let num_entries = this.getWord(dict);
     dict += 2;
     if (num_entries < 0) {
-      // apparently this means the entries aren't sorted, so we have to do a linear search?
-      // bail for now.
-      unimplemented();
-    } else {
+      // the entries aren't sorted, linear search
       let lower = 0;
-      let upper = num_entries - 1;
+      let upper = -num_entries - 1;
       while (lower <= upper) {
-        let cmp_entry = Math.floor((lower + upper) / 2);
-        let entry_addr = dict + cmp_entry * entry_len;
+        let entry_addr = dict + lower * entry_len;
 
         let c = this.getWord(entry_addr) - encoded_token_words[0];
         if (c === 0) c = this.getWord(entry_addr + 2) - encoded_token_words[1];
-
-        if (c < 0) {
-          // entry is < encoded, pick upper half
-          lower = cmp_entry + 1;
-        } else if (c > 0) {
-          // entry is > encoded, pick lower half
-          upper = cmp_entry - 1;
+        if (this._version > 3 && c === 0) {
+          c = this.getWord(entry_addr + 4) - encoded_token_words[2];
         }
-        // entry === encoded, done.
-        else return entry_addr;
+        if (c === 0) {
+          return entry_addr;
+        }
       }
       return 0; // not found
     }
+
+    // sorted case, binary search
+    let lower = 0;
+    let upper = num_entries - 1;
+    while (lower <= upper) {
+      let cmp_entry = Math.floor((lower + upper) / 2);
+      let entry_addr = dict + cmp_entry * entry_len;
+
+      let c = this.getWord(entry_addr) - encoded_token_words[0];
+      if (c === 0) c = this.getWord(entry_addr + 2) - encoded_token_words[1];
+      if (this._version > 3 && c === 0) {
+        c = this.getWord(entry_addr + 4) - encoded_token_words[2];
+      }
+      if (c < 0) {
+        // entry is < encoded, pick upper half
+        lower = cmp_entry + 1;
+      } else if (c > 0) {
+        // entry is > encoded, pick lower half
+        upper = cmp_entry - 1;
+      }
+      // entry === encoded, done.
+      else return entry_addr;
+    }
+    return 0; // not found
   }
 
   // XXX(toshok) woefully inadequate, but should handle ascii + separators
   encodeToken(text, padding = 0x05) {
+    log.info(`encodeToken(${text})`);
+
+    let resolution = this._version > 3 ? 3 : 2;
+
     // chop it off at 6 characters (the max)
     text = text.slice(0, 6);
     let zchars = [];
@@ -1368,9 +1415,14 @@ export default class Game {
 
     let zwords = [];
 
-    zwords.push((zchars[0] << 10) | (zchars[1] << 5) | zchars[2]);
-    zwords.push(0x8000 | (zchars[3] << 10) | (zchars[4] << 5) | zchars[5]);
+    for (let i = 0; i < resolution; i++) {
+      zwords.push(
+        (zchars[3 * i + 0] << 10) | (zchars[3 * i + 1] << 5) | zchars[3 * i + 2]
+      );
+    }
+    zwords[resolution - 1] |= 0x8000;
 
+    log.info(`returning ${zwords}`);
     return zwords;
   }
 
