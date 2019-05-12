@@ -4,9 +4,9 @@ import SuspendForUserInput from "./SuspendForUserInput";
 import { hex } from "./debug-helpers";
 import { toI16, toU16 } from "./cast16";
 
-function isZasciiInput(c) {
-  return c >= 32 && c <= 126; // XXX only ascii for now.
-}
+// function isZasciiInput(c) {
+//   return c >= 32 && c <= 126; // XXX only ascii for now.
+// }
 
 function unimplemented(msg) {
   if (msg) {
@@ -297,7 +297,9 @@ function get_parent(s, obj) {
   let resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} get_parent ${hex(obj)} -> (${hex(resultVar)})`);
   let o = s.getObject(obj);
-  if (o === null) s._log.error("object null in get_parent");
+  if (o === null) {
+    s._log.error("object null in get_parent");
+  }
   let parent_objnum = o === null || o.parent === null ? 0 : o.parent.objnum;
   s.storeVariable(resultVar, parent_objnum);
 }
@@ -549,9 +551,9 @@ function show_status(s) {
   if (s._version >= 4) {
     return;
   }
-  let location = s.getWord(s._global_vars + 0);
-  let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
-  let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
+  //   let location = s.getWord(s._global_vars + 0);
+  //   let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
+  //   let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
   // XXX(toshok) more here.
 }
 
@@ -673,10 +675,10 @@ function random(s, range) {
   }
 }
 
-function sound_effect(s, number, effect, volume, routine) {
+function sound_effect(s, number, _effect, _volume, _routine) {
   s._log.warn(`sound_effect ${number} -- not implemented`);
 }
-function read_char(s, dev, time, routine) {
+function read_char(s, _dev, _time, _routine) {
   let resultVar = s.readByte();
   //    readline.keyIn("{ hideEchoBack: true, mask: "" });
   s.storeVariable(resultVar, 32 /*XXX*/);
@@ -714,9 +716,15 @@ function tokenise(s, text, tokenBuffer, dict = 0, flag = 0) {
 }
 function print_table(s, zscii_text, width, height, skip) {
   s._log.debug("print_table");
-  if (width) s._log.debug(`width = ${width}`);
-  if (height) s._log.debug(`height = ${height}`);
-  if (skip) log_debug(`skip = ${skip}`);
+  if (width) {
+    s._log.debug(`width = ${width}`);
+  }
+  if (height) {
+    s._log.debug(`height = ${height}`);
+  }
+  if (skip) {
+    log_debug(`skip = ${skip}`);
+  }
 }
 
 export const op2 = [

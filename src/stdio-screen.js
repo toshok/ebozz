@@ -51,7 +51,7 @@ export default class StdioScreen {
     this.outputWindowId = windowId;
   }
 
-  getOutputWindow(game) {
+  getOutputWindow(_game) {
     return this.outputWindowId;
   }
 

@@ -16,7 +16,9 @@ export function dumpObjectTable(s) {
   let objects_without_parents = [];
   for (let i = 1; i < 255; i++) {
     let o = s.getObject(i);
-    if (o.parent === null) objects_without_parents.push(o);
+    if (o.parent === null) {
+      objects_without_parents.push(o);
+    }
   }
   console.log(`${objects_without_parents.length} root objects`);
   objects_without_parents.forEach(o => o.dump());
@@ -28,7 +30,9 @@ export function dumpDictionary(s) {
   let p = s._dict;
   let num_sep = s.getByte(p++);
   let sep_zscii = [];
-  for (let i = 0; i < num_sep; i++) sep_zscii.push(s.getByte(p++));
+  for (let i = 0; i < num_sep; i++) {
+    sep_zscii.push(s.getByte(p++));
+  }
 
   console.log(
     `Separators: ${sep_zscii.map(ch => String.fromCharCode(ch)).join(" ")}`

@@ -127,7 +127,7 @@ class EbozzBot {
 
   run() {
     let output_buffer = "";
-    let current_input_state;
+    //    let current_input_state;
 
     this.bot.on("start", () => {
       this.debugChannel("starting up");

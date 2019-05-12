@@ -4,14 +4,18 @@ let alphabet_table = [
   /* A2 */ " \n0123456789.,!?_#'\"/\\-:()"
 ];
 
-export default function zstringToAscii(s, zstr, expand) {
+export default function zstringToAscii(s, zstr, _expand) {
   // various state things, like alphabet
   let alphabet = 0;
 
   function shiftAlphabet(stype) {
-    if (stype === 4) alphabet = 1;
-    else if (stype === 5) alphabet = 2;
-    else throw new Error("unknown shift type");
+    if (stype === 4) {
+      alphabet = 1;
+    } else if (stype === 5) {
+      alphabet = 2;
+    } else {
+      throw new Error("unknown shift type");
+    }
   }
 
   let rv = [];

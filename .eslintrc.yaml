@@ -10,4 +10,12 @@ extends:
 parserOptions:
   ecmaVersion: 2017
   sourceType: module
-
+rules:
+  curly:
+    - error
+    - "all"
+  prettier/prettier:
+    - error
+  no-unused-vars:
+    - error
+    - argsIgnorePattern: "^_"

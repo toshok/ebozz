@@ -19,7 +19,9 @@ export default class Log {
   }
 
   debug(msg) {
-    if (this.debug_flag) console.log(this._debug(`[DEBUG] ${msg}`));
+    if (this.debug_flag) {
+      console.log(this._debug(`[DEBUG] ${msg}`));
+    }
   }
   info(msg) {
     console.log(this._debug(`[INFO] ${msg}`));

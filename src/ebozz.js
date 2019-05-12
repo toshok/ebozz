@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as readline from "readline-sync";
-
 import GameObject from "./GameObject";
 import SuspendForUserInput from "./SuspendForUserInput";
 
@@ -20,7 +17,7 @@ const OPERAND_TYPE_OMITTED = 3;
 const INSTRUCTION_FORM_LONG = 0;
 const INSTRUCTION_FORM_SHORT = 1;
 const INSTRUCTION_FORM_VARIABLE = 2;
-const INSTRUCTION_FORM_EXTENDED = 3;
+//const INSTRUCTION_FORM_EXTENDED = 3;
 
 export default class Game {
   constructor(story_buffer, log_impl, screen, storage) {
@@ -289,7 +286,9 @@ export default class Game {
       form = INSTRUCTION_FORM_SHORT;
 
       let optype = (opcode & 0x30) >> 4;
-      if (optype !== OPERAND_TYPE_OMITTED) operandTypes = [optype];
+      if (optype !== OPERAND_TYPE_OMITTED) {
+        operandTypes = [optype];
+      }
 
       opcode = opcode & 0x0f;
     }
@@ -360,23 +359,37 @@ export default class Game {
   }
 
   unpackRoutineAddress(addr) {
-    if (this._version <= 3) return 2 * addr;
-    else if (this._version <= 5) return 4 * addr;
-    else if (this._version <= 7) return 4 * addr + this._routine_offset;
-    else if (this._version == 8) return 8 * addr;
-    else throw new Error("unknown version");
+    if (this._version <= 3) {
+      return 2 * addr;
+    } else if (this._version <= 5) {
+      return 4 * addr;
+    } else if (this._version <= 7) {
+      return 4 * addr + this._routine_offset;
+    } else if (this._version == 8) {
+      return 8 * addr;
+    } else {
+      throw new Error("unknown version");
+    }
   }
 
-  unpackStringAddress(addr, for_call) {
-    if (this._version <= 3) return 2 * addr;
-    else if (this._version <= 5) return 4 * addr;
-    else if (this._version <= 7) return 4 * addr + this._strings_offset;
-    else if (this._version == 8) return 8 * addr;
-    else throw new Error("unknown version");
+  unpackStringAddress(addr, _for_call) {
+    if (this._version <= 3) {
+      return 2 * addr;
+    } else if (this._version <= 5) {
+      return 4 * addr;
+    } else if (this._version <= 7) {
+      return 4 * addr + this._strings_offset;
+    } else if (this._version == 8) {
+      return 8 * addr;
+    } else {
+      throw new Error("unknown version");
+    }
   }
 
   getObject(objnum) {
-    if (objnum === 0) return null;
+    if (objnum === 0) {
+      return null;
+    }
 
     if (
       (this._version <= 3 && objnum > 255) ||
@@ -386,13 +399,16 @@ export default class Game {
     }
 
     let cached_obj = this._game_objects[objnum];
-    if (!cached_obj)
+    if (!cached_obj) {
       this._game_objects[objnum] = cached_obj = new GameObject(this, objnum);
+    }
     return cached_obj;
   }
 
   pushStack(v) {
-    if (v === undefined || v === null) throw new Error("bad value on push");
+    if (v === undefined || v === null) {
+      throw new Error("bad value on push");
+    }
     this._stack.push(v);
     this._log.debug(
       `     after pushStack(${hex(v)}): ${this._stack.map(el => hex(el))}`
@@ -400,18 +416,24 @@ export default class Game {
   }
   popStack() {
     this._log.debug(`     before popStack: ${this._stack.map(el => hex(el))}`);
-    if (this._stack.length === 0) throw new Error("empty stack");
+    if (this._stack.length === 0) {
+      throw new Error("empty stack");
+    }
     return this._stack.pop();
   }
   peekStack() {
     this._log.debug(`     before peekStack: ${this._stack.map(el => hex(el))}`);
-    if (this._stack.length === 0) throw new Error("empty stack");
+    if (this._stack.length === 0) {
+      throw new Error("empty stack");
+    }
     return this._stack[this._stack.length - 1];
   }
 
   storeVariable(v, value, replaceTop = false) {
     if (v === 0) {
-      if (replaceTop) this.popStack();
+      if (replaceTop) {
+        this.popStack();
+      }
       this.pushStack(value);
       return;
     }
@@ -434,7 +456,9 @@ export default class Game {
 
   loadVariable(variable, peekTop = false) {
     if (variable === 0) {
-      if (peekTop) return this.peekStack();
+      if (peekTop) {
+        return this.peekStack();
+      }
       return this.popStack();
     }
     if (variable < 16) {
@@ -467,21 +491,29 @@ export default class Game {
   }
 
   getByte(addr) {
-    if (addr < 0 || addr >= this._mem.length) throw new Error("segfault");
+    if (addr < 0 || addr >= this._mem.length) {
+      throw new Error("segfault");
+    }
     return this._mem[addr];
   }
   setByte(addr, b) {
-    if (addr < 0 || addr >= this._mem.length) throw new Error("segfault");
+    if (addr < 0 || addr >= this._mem.length) {
+      throw new Error("segfault");
+    }
     this._mem[addr] = b;
   }
   getWord(addr) {
-    if (addr < 0 || addr > this._mem.length) throw new Error("segfault");
+    if (addr < 0 || addr > this._mem.length) {
+      throw new Error("segfault");
+    }
     let ub = this._mem[addr + 0];
     let lb = this._mem[addr + 1];
     return ub * 256 + lb;
   }
   setWord(addr, value) {
-    if (addr < 0 || addr > this._mem.length) throw new Error("segfault");
+    if (addr < 0 || addr > this._mem.length) {
+      throw new Error("segfault");
+    }
     let lb = value & 255;
     let ub = value >> 8;
     this._mem[addr + 0] = ub;
@@ -525,7 +557,9 @@ export default class Game {
     } else {
       // 2 byte offset
       // propagate sign bit
-      if ((off1 & 0x20) !== 0) off1 |= 0xc0;
+      if ((off1 & 0x20) !== 0) {
+        off1 |= 0xc0;
+      }
 
       offset = toI16((off1 << 8) | this.readByte());
     }
@@ -557,7 +591,9 @@ export default class Game {
     let num_locals = this.getByte(addr++);
     let locals = Array(num_locals);
     if (this._version >= 5) {
-      for (let i = 0; i < num_locals; i++) locals[i] = 0;
+      for (let i = 0; i < num_locals; i++) {
+        locals[i] = 0;
+      }
     } else {
       for (let i = 0; i < num_locals; i++) {
         locals[i] = this.getWord(addr);
@@ -611,7 +647,9 @@ export default class Game {
         let entry_addr = dict + lower * entry_len;
 
         let c = this.getWord(entry_addr) - encoded_token_words[0];
-        if (c === 0) c = this.getWord(entry_addr + 2) - encoded_token_words[1];
+        if (c === 0) {
+          c = this.getWord(entry_addr + 2) - encoded_token_words[1];
+        }
         if (this._version > 3 && c === 0) {
           c = this.getWord(entry_addr + 4) - encoded_token_words[2];
         }
@@ -630,7 +668,9 @@ export default class Game {
       let entry_addr = dict + cmp_entry * entry_len;
 
       let c = this.getWord(entry_addr) - encoded_token_words[0];
-      if (c === 0) c = this.getWord(entry_addr + 2) - encoded_token_words[1];
+      if (c === 0) {
+        c = this.getWord(entry_addr + 2) - encoded_token_words[1];
+      }
       if (this._version > 3 && c === 0) {
         c = this.getWord(entry_addr + 4) - encoded_token_words[2];
       }
@@ -642,7 +682,9 @@ export default class Game {
         upper = cmp_entry - 1;
       }
       // entry === encoded, done.
-      else return entry_addr;
+      else {
+        return entry_addr;
+      }
     }
     return 0; // not found
   }
@@ -657,8 +699,9 @@ export default class Game {
     let zchars = [];
 
     for (let i = 0; i < text.length; i++) {
-      if (text[i] < "a" || text[i] > "z")
+      if (text[i] < "a" || text[i] > "z") {
         throw new Error("encodeToken is too dumb");
+      }
       zchars.push(text.charCodeAt(i) - "a".charCodeAt(0) + 6);
     }
     while (zchars.length < 6) {
@@ -687,7 +730,9 @@ export default class Game {
     let max_tokens = this.getByte(parsebuffer);
 
     let count_tokens = this.getByte(parsebuffer + 1);
-    if (count_tokens >= max_tokens) return;
+    if (count_tokens >= max_tokens) {
+      return;
+    }
 
     let wordtext = inputbuffer.slice(start, end).toLowerCase();
     let tokenword = this.encodeToken(wordtext);
@@ -705,7 +750,6 @@ export default class Game {
   }
 
   tokeniseText(textBuffer, length, from, parseBuffer, dict, flag) {
-    let addr;
     let token_max, token_count;
 
     token_max = this.getByte(parseBuffer);
@@ -805,8 +849,9 @@ export default class Game {
 
     let num_sep = this.getByte(this._dict);
     let sep_zscii = [];
-    for (let i = 0; i < num_sep; i++)
+    for (let i = 0; i < num_sep; i++) {
       sep_zscii.push(this.getByte(this._dict + 1 + i));
+    }
 
     this._log.debug(
       `sep_zscii = ${sep_zscii.map(ch => String.fromCharCode(ch))}`
@@ -821,8 +866,12 @@ export default class Game {
     const CHAR_CLASS_WORD = 0;
 
     function char_class(c) {
-      if (c === " ") return CHAR_CLASS_SPACE;
-      if (is_separator(c)) return CHAR_CLASS_SEP;
+      if (c === " ") {
+        return CHAR_CLASS_SPACE;
+      }
+      if (is_separator(c)) {
+        return CHAR_CLASS_SEP;
+      }
       return CHAR_CLASS_WORD;
     }
 

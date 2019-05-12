@@ -52,9 +52,8 @@ let storage = {
     });
   },
 
-  loadSnapshot(game) {
+  loadSnapshot(_game) {
     let f = fs.readFileSync("snapshot.dat");
-    let b = Buffer.from(f.buffer);
     return Game.readSnapshotFromBuffer(Buffer.from(f.buffer));
   }
 };
