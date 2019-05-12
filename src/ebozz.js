@@ -24,6 +24,13 @@ function isZasciiInput(c) {
   return c >= 32 && c <= 126; // XXX only ascii for now.
 }
 
+function unimplemented(msg) {
+  if (msg) {
+    throw new Error(`unimplemented: ${msg}`);
+  }
+  throw new Error("unimplemented");
+}
+
 function illegalOpcode() {
   return opcode("???", () => {
     throw new Error("illegal opcode");
@@ -34,277 +41,709 @@ function opcode(mnemonic, impl) {
   return { mnemonic, impl };
 }
 
-function unimplemented(msg) {
-  if (msg) {
-    throw new Error(`unimplemented: ${msg}`);
-  }
-  throw new Error("unimplemented");
-}
-
 function unimplementedOpcode(mnemonic) {
-  return opcode(mnemonic, () => {
-    console.error(`unimplemented opcode: ${mnemonic}`);
-    throw new Error(`unimplemented opcode: ${mnemonic}`);
-  });
+  return opcode(mnemonic, () => unimplemented(`opcode: ${mnemonic}`));
 }
 
 function nopcode() {
   return opcode("nop", () => {});
 }
 
-let op2 = [
-  nopcode(),
-  opcode("je", (s, a, b, c, d) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${hex(c)} ${hex(
-        d
-      )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-    );
-    let cond =
-      a === b || (c !== undefined && a === c) || (d !== undefined && a === d);
-    s.doBranch(cond, condfalse, offset);
-  }),
-  opcode("jl", (s, a, b) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} jl ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
-        s.pc + offset - 2
-      )}`
-    );
-    s.doBranch(s.toI16(a) < s.toI16(b), condfalse, offset);
-  }),
-  opcode("jg", (s, a, b) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} jg ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
-        s.pc + offset - 2
-      )}`
-    );
-    s.doBranch(s.toI16(a) > s.toI16(b), condfalse, offset);
-  }),
-  opcode("dec_chk", (s, variable, value) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} dec_chk ${hex(
-        variable
-      )} ${value} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-    );
-    let new_val = s.toI16(s.loadVariable(variable)) - 1;
-    s.storeVariable(variable, s.toU16(new_val));
-    log.debug(`     ${new_val} <? ${value}`);
-    s.doBranch(new_val < s.toI16(value), condfalse, offset);
-  }),
-  opcode("inc_chk", (s, variable, value) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} inc_chk ${hex(
-        variable
-      )} ${value} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-    );
-    let new_val = s.toI16(s.loadVariable(variable)) + 1;
-    s.storeVariable(variable, s.toU16(new_val));
-    log.debug(`     ${new_val} ?> ${value}`);
-    s.doBranch(new_val > s.toI16(value), condfalse, offset);
-  }),
-  opcode("jin", (s, obj1, obj2) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} jin ${hex(obj1)} ${hex(obj2)} -> [${!condfalse}] ${hex(
-        s.pc + offset - 2
-      )}`
-    );
-    let o1 = s.getObject(obj1);
-    if (o1 === null) {
-      log.error("child object is null in jin");
-      s.doBranch(false, condfalse, offset);
+function opcodeImpl(fn) {
+  return opcode(fn.name, fn);
+}
+
+// actual opcodes
+function je(s, a, b, c, d) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${hex(c)} ${hex(
+      d
+    )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
+  );
+  let cond =
+    a === b || (c !== undefined && a === c) || (d !== undefined && a === d);
+  s.doBranch(cond, condfalse, offset);
+}
+
+function jl(s, a, b) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} jl ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  s.doBranch(s.toI16(a) < s.toI16(b), condfalse, offset);
+}
+
+function jg(s, a, b) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} jg ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  s.doBranch(s.toI16(a) > s.toI16(b), condfalse, offset);
+}
+
+function dec_chk(s, variable, value) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} dec_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  let new_val = s.toI16(s.loadVariable(variable)) - 1;
+  s.storeVariable(variable, s.toU16(new_val));
+  log.debug(`     ${new_val} <? ${value}`);
+  s.doBranch(new_val < s.toI16(value), condfalse, offset);
+}
+
+function inc_chk(s, variable, value) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} inc_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  let new_val = s.toI16(s.loadVariable(variable)) + 1;
+  s.storeVariable(variable, s.toU16(new_val));
+  log.debug(`     ${new_val} ?> ${value}`);
+  s.doBranch(new_val > s.toI16(value), condfalse, offset);
+}
+
+function jin(s, obj1, obj2) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} jin ${hex(obj1)} ${hex(obj2)} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  let o1 = s.getObject(obj1);
+  if (o1 === null) {
+    log.error("child object is null in jin");
+    s.doBranch(false, condfalse, offset);
+  } else {
+    let parentObjNum = o1.parent ? o1.parent.objnum : 0;
+    s.doBranch(parentObjNum === obj2, condfalse, offset);
+  }
+}
+
+function test(s, bitmap, flags) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} test ${hex(bitmap)} ${hex(flags)} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  s.doBranch((bitmap & flags) === flags, condfalse, offset);
+}
+
+function or(s, a, b) {
+  s.storeVariable(s.readByte(), a | b);
+}
+
+function and(s, a, b) {
+  s.storeVariable(s.readByte(), a & b);
+}
+
+function test_attr(s, obj, attribute) {
+  //fs.writeSync(log_fp, `+  ${hex(obj)} / ${hex(attribute)}\n`);
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} test_attr ${hex(obj)} ${hex(
+      attribute
+    )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
+  );
+  let o = s.getObject(obj);
+  if (o === null) {
+    log.error("object null in test_attr");
+    s.doBranch(false, condfalse, offset);
+  } else {
+    s.doBranch(o.hasAttribute(attribute), condfalse, offset);
+  }
+}
+
+function set_attr(s, obj, attribute) {
+  log.debug(`${hex(s.op_pc)} set_attr ${obj} ${attribute}`);
+  let o = s.getObject(obj);
+  o.setAttribute(attribute);
+}
+
+function clear_attr(s, obj, attribute) {
+  log.debug(`${hex(s.op_pc)} clear_attr ${obj} ${attribute}`);
+  let o = s.getObject(obj);
+  o.clearAttribute(attribute);
+}
+
+function store(s, variable, value) {
+  log.debug(`${hex(s.op_pc)} store (${hex(variable)}) ${hex(value)}`);
+  s.storeVariable(variable, value, true);
+}
+
+function insert_obj(s, obj, destination) {
+  log.debug(`${hex(s.op_pc)} insert_obj ${obj} ${destination}`);
+  let o = s.getObject(obj);
+  let desto = s.getObject(destination);
+  if (o.parent) {
+    // need to unlink it from its current parent
+    if (o.parent.child.objnum === o.objnum) {
+      // it's the first child.  easy.
+      o.parent.child = o.sibling;
     } else {
-      let parentObjNum = o1.parent ? o1.parent.objnum : 0;
-      s.doBranch(parentObjNum === obj2, condfalse, offset);
-    }
-  }),
-  opcode("test", (s, bitmap, flags) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} test ${hex(bitmap)} ${hex(
-        flags
-      )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-    );
-    s.doBranch((bitmap & flags) === flags, condfalse, offset);
-  }),
-  opcode("or", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} or ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, a | b);
-  }),
-  opcode("and", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} and ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, a & b);
-  }),
-  opcode("test_attr", (s, obj, attribute) => {
-    //fs.writeSync(log_fp, `+  ${hex(obj)} / ${hex(attribute)}\n`);
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} test_attr ${hex(obj)} ${hex(
-        attribute
-      )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-    );
-    let o = s.getObject(obj);
-    if (o === null) {
-      log.error("object null in test_attr");
-      s.doBranch(false, condfalse, offset);
-    } else {
-      s.doBranch(o.hasAttribute(attribute), condfalse, offset);
-    }
-  }),
-  opcode("set_attr", (s, obj, attribute) => {
-    log.debug(`${hex(s.op_pc)} set_attr ${obj} ${attribute}`);
-    let o = s.getObject(obj);
-    o.setAttribute(attribute);
-  }),
-  opcode("clear_attr", (s, obj, attribute) => {
-    log.debug(`${hex(s.op_pc)} clear_attr ${obj} ${attribute}`);
-    let o = s.getObject(obj);
-    o.clearAttribute(attribute);
-  }),
-  opcode("store", (s, variable, value) => {
-    log.debug(`${hex(s.op_pc)} store (${hex(variable)}) ${hex(value)}`);
-    s.storeVariable(variable, value, true);
-  }),
-  opcode("insert_obj", (s, obj, destination) => {
-    log.debug(`${hex(s.op_pc)} insert_obj ${obj} ${destination}`);
-    let o = s.getObject(obj);
-    let desto = s.getObject(destination);
-    if (o.parent) {
-      // need to unlink it from its current parent
-      if (o.parent.child.objnum === o.objnum) {
-        // it's the first child.  easy.
-        o.parent.child = o.sibling;
-      } else {
-        let p = o.parent;
-        let next;
-        for (let c = p.child; c !== null; c = next) {
-          next = c.sibling;
-          if (next.objnum === o.objnum) {
-            c.sibling = o.sibling;
-            break;
-          }
+      let p = o.parent;
+      let next;
+      for (let c = p.child; c !== null; c = next) {
+        next = c.sibling;
+        if (next.objnum === o.objnum) {
+          c.sibling = o.sibling;
+          break;
         }
       }
-
-      o.sibling = desto.child;
     }
 
-    // link it into its new parent's list
     o.sibling = desto.child;
-    o.parent = desto;
-    o.parent.child = o;
-  }),
-  opcode("loadw", (s, array, word_index) => {
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
-        resultVar
-      )})`
-    );
-    s.storeVariable(resultVar, s.getWord((array + 2 * word_index) & 0xffff));
-  }),
-  opcode("loadb", (s, array, byte_index) => {
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
-        resultVar
-      )})`
-    );
-    s.storeVariable(resultVar, s.getByte((array + byte_index) & 0xffff));
-  }),
-  opcode("get_prop", (s, obj, property) => {
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} get_prop ${hex(obj)} ${hex(property)} -> (${hex(
-        resultVar
-      )})`
-    );
-    let o = s.getObject(obj);
-    if (o === null) {
-      log.warn("get_prop called on null object");
+  }
+
+  // link it into its new parent's list
+  o.sibling = desto.child;
+  o.parent = desto;
+  o.parent.child = o;
+}
+
+function loadw(s, array, word_index) {
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
+      resultVar
+    )})`
+  );
+  s.storeVariable(resultVar, s.getWord((array + 2 * word_index) & 0xffff));
+}
+
+function loadb(s, array, byte_index) {
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
+      resultVar
+    )})`
+  );
+  s.storeVariable(resultVar, s.getByte((array + byte_index) & 0xffff));
+}
+
+function get_prop(s, obj, property) {
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} get_prop ${hex(obj)} ${hex(property)} -> (${hex(
+      resultVar
+    )})`
+  );
+  let o = s.getObject(obj);
+  if (o === null) {
+    log.warn("get_prop called on null object");
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  s.storeVariable(resultVar, o.getProperty(property));
+}
+
+function get_prop_addr(s, obj, property) {
+  //fs.writeSync(log_fp, ` get_prop_addr ${hex(obj)} ${hex(property)}`);
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} get_prop_addr ${hex(obj)} ${hex(property)} -> (${hex(
+      resultVar
+    )})`
+  );
+  let o = s.getObject(obj);
+  s.storeVariable(resultVar, o.getPropertyAddress(property));
+}
+
+function get_next_prop(s, obj, property) {
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} get_next_prop ${hex(obj)} ${hex(property)} -> (${hex(
+      resultVar
+    )})`
+  );
+  let o = s.getObject(obj);
+  s.storeVariable(resultVar, o.getNextProperty(property));
+}
+
+function add(s, a, b) {
+  s.storeVariable(s.readByte(), s.toI16(a) + s.toI16(b));
+}
+
+function sub(s, a, b) {
+  s.storeVariable(s.readByte(), s.toI16(a) - s.toI16(b));
+}
+
+function mul(s, a, b) {
+  s.storeVariable(s.readByte(), s.toI16(a) * s.toI16(b));
+}
+
+function div(s, a, b) {
+  s.storeVariable(s.readByte(), Math.floor(s.toI16(a) / s.toI16(b)));
+}
+
+function mod(s, a, b) {
+  s.storeVariable(s.readByte(), s.toI16(a) % s.toI16(b));
+}
+
+function call_1s(s, routine) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  log.debug(`${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`);
+  s.callRoutine(routine, resultVar);
+}
+
+function call_1n(s, routine) {
+  if (routine === 0) {
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  log.debug(`${hex(s.op_pc)} call_1n ${hex(routine)}`);
+  s.callRoutine(routine, null);
+}
+
+function call_2s(s, routine, arg1) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  log.debug(
+    `${hex(s.op_pc)} call_2s ${hex(routine)} ${arg1} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, arg1);
+}
+
+function call_2n(s, routine, arg1) {
+  if (routine === 0) {
+    return;
+  }
+  log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
+  routine = s.unpackRoutineAddress(routine);
+  s.callRoutine(routine, null, arg1);
+}
+
+function set_color(s, foreground, background) {
+  log.warn(
+    `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
+  );
+}
+
+function jz(s, a) {
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
+  );
+  s.doBranch(a === 0, condfalse, offset);
+}
+
+function get_sibling(s, obj) {
+  let resultVar = s.readByte();
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} get_sibling ${hex(obj)} -> (${hex(
+      resultVar
+    )}) ?[${!condfalse}] ${hex(offset)}`
+  );
+
+  let o = s.getObject(obj);
+  let sibling = null;
+  if (o) {
+    sibling = o.sibling;
+    if (sibling) {
+      s.storeVariable(resultVar, sibling.objnum);
+    } else {
       s.storeVariable(resultVar, 0);
+    }
+  } else {
+    log.warn("object is 0 in get_sibling");
+    s.storeVariable(resultVar, 0);
+  }
+  //fs.writeSync(log_fp, `+  sibling = ${sibling ? hex(sibling.objnum) : '0'}\n`);
+
+  s.doBranch(sibling !== null, condfalse, offset);
+}
+
+function get_child(s, obj) {
+  let resultVar = s.readByte();
+  let [offset, condfalse] = s.readBranchOffset();
+  log.debug(
+    `${hex(s.op_pc)} get_child ${hex(obj)} -> (${hex(
+      resultVar
+    )}) ?[${!condfalse}] ${hex(offset)}`
+  );
+
+  let o = s.getObject(obj);
+  let child = o.child;
+  if (child) {
+    s.storeVariable(resultVar, child.objnum);
+  } else {
+    s.storeVariable(resultVar, 0);
+  }
+  s.doBranch(child !== null, condfalse, offset);
+}
+
+function get_parent(s, obj) {
+  let resultVar = s.readByte();
+  log.debug(`${hex(s.op_pc)} get_parent ${hex(obj)} -> (${hex(resultVar)})`);
+  let o = s.getObject(obj);
+  if (o === null) log.error("object null in get_parent");
+  let parent_objnum = o === null || o.parent === null ? 0 : o.parent.objnum;
+  s.storeVariable(resultVar, parent_objnum);
+}
+
+function get_prop_len(s, propDataAddr) {
+  let resultVar = s.readByte();
+  log.debug(
+    `${hex(s.op_pc)} get_prop_len ${hex(propDataAddr)} -> (${hex(resultVar)})`
+  );
+  let len = GameObject.getPropertyLength(s, propDataAddr);
+  s.storeVariable(resultVar, len);
+}
+
+function inc(s, variable) {
+  s.storeVariable(variable, s.toU16(s.toI16(s.loadVariable(variable)) + 1));
+}
+
+function dec(s, variable) {
+  s.storeVariable(variable, s.toU16(s.toI16(s.loadVariable(variable)) - 1));
+}
+
+function print_addr(s, stringAddr) {
+  log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
+  s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
+}
+
+function remove_obj(s, obj) {
+  log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
+  let o = s.getObject(obj);
+  o.unlink();
+}
+function print_obj(s, obj) {
+  log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
+  let o = s.getObject(obj);
+  s._screen.print(s, `${o.name}`);
+}
+
+function ret(s, value) {
+  s.returnFromRoutine(value);
+}
+
+function jump(s, addr) {
+  s.pc = s.pc + s.toI16(addr) - 2;
+}
+
+function print_paddr(s, packed_addr) {
+  s._screen.print(
+    s,
+    zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true))
+  );
+}
+
+function load(s, variable) {
+  let resultVar = s.readByte();
+  log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
+  s.storeVariable(resultVar, s.loadVariable(variable, false), false);
+}
+
+function not(s, value) {
+  let resultVar = s.readByte();
+  value = value ^ 0xffff;
+  s.storeVariable(resultVar, value);
+}
+
+function rtrue(s) {
+  s.returnFromRoutine(1);
+}
+function rfalse(s) {
+  s.returnFromRoutine(0);
+}
+function print(s) {
+  s._screen.print(s, zstringToAscii(s, s.readZString(), true));
+}
+
+function print_ret(s) {
+  log.debug(`${hex(s.op_pc)} print_ret`);
+  s._screen.print(s, zstringToAscii(s, s.readZString(), true));
+  s.returnFromRoutine(1);
+}
+
+function save(s) {
+  let [offset, condfalse] = s.readBranchOffset();
+
+  let saved = s.saveGame();
+  if (s._version < 5) {
+    s.doBranch(saved, condfalse, offset);
+  } else {
+    throw new Error("unimplemented save for version 5+");
+  }
+}
+
+function restore(s) {
+  let [offset, condfalse] = s.readBranchOffset();
+
+  let restored = s.restoreGame();
+  if (s._version < 5) {
+    s.doBranch(restored, condfalse, offset);
+  } else {
+    throw new Error("unimplemented restore for version 5+");
+  }
+}
+
+function quit(s) {
+  s._quit = true;
+}
+
+function ret_popped(s) {
+  s.returnFromRoutine(s.popStack());
+}
+
+function new_line(s) {
+  s._screen.print(s, "\n");
+}
+
+function show_status(s) {
+  if (s._version >= 4) {
+    return;
+  }
+  let location = s.getWord(s._global_vars + 0);
+  let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
+  let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
+  // XXX(toshok) more here.
+}
+
+function call(s, routine, ...args) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  log.debug(
+    `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, ...args);
+}
+function storew(s, array, word_index, value) {
+  log.debug(
+    `${hex(s.op_pc)} storew ${hex(array)} ${hex(word_index)} ${hex(value)}`
+  );
+  s.setWord((array + 2 * word_index) & 0xffff, value);
+}
+function storeb(s, array, byte_index, value) {
+  log.debug(
+    `${hex(s.op_pc)} storeb ${hex(array)} ${hex(byte_index)} ${hex(value)}`
+  );
+  s.setByte((array + byte_index) & 0xffff, value);
+}
+function put_prop(s, obj, property, value) {
+  log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
+  let o = s.getObject(obj);
+  if (o === null) {
+    log.warn("put_prop called on null object");
+    return;
+  }
+  o.putProperty(property, value);
+}
+
+function sread(s, textBuffer, parseBuffer, time, routine) {
+  let max_input = s.getByte(textBuffer) + 1;
+  log.debug(
+    `sread max_input=${max_input}, text=${textBuffer}, parse=${parseBuffer}, time=${time}, routine=${routine}`
+  );
+  // XXX(toshok) we need to handle the initial contents of the buffer (only Shogun and Zork Zero use it?)
+  throw new SuspendForUserInput({ textBuffer, parseBuffer, time, routine });
+}
+function print_char(s, ...chars) {
+  log.debug(`print_char(${chars})`);
+  s._screen.print(s, chars.map(c => String.fromCharCode(c)).join(""));
+}
+function print_num(s, value) {
+  s._screen.print(s, s.toI16(value).toString());
+}
+function random(s, range) {
+  log.debug(`random(${range})`);
+  let resultVar = s.readByte();
+  if (range <= 0) {
+    // (XXX) can't seed in JS?
+    s.storeVariable(resultVar, 0);
+  } else {
+    let rv = Math.floor(Math.random() * range + 1);
+    s.storeVariable(resultVar, rv);
+  }
+}
+function push(s, value) {
+  s.pushStack(value);
+}
+function pull(s, variable) {
+  s.storeVariable(variable, s.popStack());
+}
+function split_window(s, lines) {
+  s._screen.splitWindow(s, lines);
+}
+function set_window(s, window) {
+  s._screen.setOutputWindow(s, window);
+}
+function call_vs2(s, routine, ...args) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  log.debug(
+    `${hex(s.op_pc)} call_vs2 ${hex(routine)} ${args} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, ...args);
+}
+function erase_window(s, window) {
+  s._screen.clearWindow(s, window);
+}
+function erase_line(s, value) {
+  s._screen.clearLine(s, value);
+}
+function set_cursor(s, line, column, window) {
+  if (s._version >= 6) {
+    if (line === -1) {
+      s._screen.hideCursor(s);
       return;
     }
-    s.storeVariable(resultVar, o.getProperty(property));
-  }),
-  opcode("get_prop_addr", (s, obj, property) => {
-    //fs.writeSync(log_fp, ` get_prop_addr ${hex(obj)} ${hex(property)}`);
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} get_prop_addr ${hex(obj)} ${hex(property)} -> (${hex(
-        resultVar
-      )})`
-    );
-    let o = s.getObject(obj);
-    s.storeVariable(resultVar, o.getPropertyAddress(property));
-  }),
-  opcode("get_next_prop", (s, obj, property) => {
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} get_next_prop ${hex(obj)} ${hex(property)} -> (${hex(
-        resultVar
-      )})`
-    );
-    let o = s.getObject(obj);
-    s.storeVariable(resultVar, o.getNextProperty(property));
-  }),
-  opcode("add", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} add ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, s.toI16(a) + s.toI16(b));
-  }),
-  opcode("sub", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} add ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, s.toI16(a) - s.toI16(b));
-  }),
-  opcode("mul", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} mul ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, s.toI16(a) * s.toI16(b));
-  }),
-  opcode("div", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} div ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, Math.floor(s.toI16(a) / s.toI16(b)));
-  }),
-  opcode("mod", (s, a, b) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} mod ${hex(a)} ${hex(b)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, s.toI16(a) % s.toI16(b));
-  }),
-  opcode("call_2s", (s, routine, arg1) => {
-    let resultVar = s.readByte();
-    if (routine === 0) {
-      s.storeVariable(resultVar, 0);
+    if (line === -2) {
+      s._screen.showCursor(s);
       return;
     }
-    routine = s.unpackRoutineAddress(routine);
-    log.debug(
-      `${hex(s.op_pc)} call_2s ${hex(routine)} ${arg1} -> (${hex(resultVar)})`
-    );
-    s.callRoutine(routine, resultVar, arg1);
-  }),
-  opcode("call_2n", (s, routine, arg1) => {
-    if (routine === 0) {
+  }
+  if (s._version < 6) {
+    window = s._screen.getOutputWindow(s);
+  }
+
+  s._screen.setCursorPosition(s, line, column, window);
+}
+function get_cursor(s, array) {
+  log.warn(`get_cursor ${array} -- not implemented`);
+}
+function set_text_style(s, style) {
+  s._screen.setTextStyle(s, style);
+}
+function buffer_mode(s, flag) {
+  s._screen.setBufferMode(s, flag);
+}
+function output_stream(s, number, table, width) {
+  let streamNumber = s.toI16(number);
+  if (streamNumber === 0) {
+    // why emit this opcode at all?
+    return;
+  }
+  if (streamNumber > 0) {
+    s._screen.enableOutputStream(s, streamNumber, table, width);
+    return;
+  }
+  s._screen.disableOutputStream(s, -streamNumber, table, width);
+}
+function input_stream(s, number) {
+  s._screen.selectInputStream(s, s.toI16(number));
+}
+function sound_effect(s, number, effect, volume, routine) {
+  log.warn(`sound_effect ${number} -- not implemented`);
+}
+function read_char(s, dev, time, routine) {
+  let resultVar = s.readByte();
+  //    readline.keyIn("{ hideEchoBack: true, mask: "" });
+  s.storeVariable(resultVar, 32 /*XXX*/);
+}
+function scan_table(s, x, table, len, form = 0x82) {
+  let resultVar = s.readByte();
+  let [offset, condfalse] = s.readBranchOffset();
+
+  log.debug(`scan_table ${hex(x)} ${hex(table)} ${hex(len)} ${hex(form)}`);
+
+  // XXX can we verify that 'x' is the proper sized value?
+  let searchForWord = (form & 0x80) === 80;
+  let elementSize = form & 0x7f;
+
+  let cur = table;
+  let end = table + len;
+  while (cur < end) {
+    let table_element = searchForWord ? s.getWord(cur) : s.getByte(cur);
+    if (table_element === x) {
+      log.debug(`+ found element at ${hex(cur)}`);
+      s.storeVariable(resultVar, cur);
+      s.doBranch(true, condfalse, offset);
       return;
     }
-    log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
-    routine = s.unpackRoutineAddress(routine);
-    s.callRoutine(routine, null, arg1);
-  }),
-  opcode("set_color", (s, foreground, background) => {
-    log.warn(
-      `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
-    );
-  }),
+    cur += elementSize;
+  }
+
+  log.debug(`+ didn't find element`);
+  s.storeVariable(resultVar, 0);
+  // don't branch
+}
+function call_vn2(s, routine, ...args) {
+  if (routine === 0) {
+    return;
+  }
+  log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
+  routine = s.unpackRoutineAddress(routine);
+  s.callRoutine(routine, null, ...args);
+}
+function tokenise(s, text, tokenBuffer, dict = 0, flag = 0) {
+  s.tokeniseLine(text, tokenBuffer, dict, flag != 0);
+}
+function print_table(s, zscii_text, width, height, skip) {
+  log.debug("print_table");
+  if (width) log.debug(`width = ${width}`);
+  if (height) log.debug(`height = ${height}`);
+  if (skip) log_debug(`skip = ${skip}`);
+}
+function check_arg_count(s, argNumber) {
+  let [offset, condfalse] = s.readBranchOffset();
+
+  s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
+}
+
+let op2 = [
+  nopcode(),
+  opcodeImpl(je),
+  opcodeImpl(jl),
+  opcodeImpl(jg),
+  opcodeImpl(dec_chk),
+  opcodeImpl(inc_chk),
+  opcodeImpl(jin),
+  opcodeImpl(test),
+  opcodeImpl(or),
+  opcodeImpl(and),
+  opcodeImpl(test_attr),
+  opcodeImpl(set_attr),
+  opcodeImpl(clear_attr),
+
+  opcodeImpl(store),
+  opcodeImpl(insert_obj),
+
+  opcodeImpl(loadw),
+  opcodeImpl(loadb),
+
+  opcodeImpl(get_prop),
+  opcodeImpl(get_prop_addr),
+  opcodeImpl(get_next_prop),
+
+  opcodeImpl(add),
+  opcodeImpl(sub),
+  opcodeImpl(mul),
+  opcodeImpl(div),
+  opcodeImpl(mod),
+
+  opcodeImpl(call_2s),
+  opcodeImpl(call_2n),
+
+  opcodeImpl(set_color),
   unimplementedOpcode("throw"),
   illegalOpcode(),
   illegalOpcode(),
@@ -312,376 +751,91 @@ let op2 = [
 ];
 
 let op1 = [
-  opcode("jz", (s, a) => {
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(
-        s.pc + offset - 2
-      )}`
-    );
-    s.doBranch(a === 0, condfalse, offset);
-  }),
-  opcode("get_sibling", (s, obj) => {
-    let resultVar = s.readByte();
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} get_sibling ${hex(obj)} -> (${hex(
-        resultVar
-      )}) ?[${!condfalse}] ${hex(offset)}`
-    );
+  opcodeImpl(jz),
 
-    let o = s.getObject(obj);
-    let sibling = null;
-    if (o) {
-      sibling = o.sibling;
-      if (sibling) {
-        s.storeVariable(resultVar, sibling.objnum);
-      } else {
-        s.storeVariable(resultVar, 0);
-      }
-    } else {
-      log.warn("object is 0 in get_sibling");
-      s.storeVariable(resultVar, 0);
-    }
-    //fs.writeSync(log_fp, `+  sibling = ${sibling ? hex(sibling.objnum) : '0'}\n`);
+  opcodeImpl(get_sibling),
+  opcodeImpl(get_child),
+  opcodeImpl(get_parent),
 
-    s.doBranch(sibling !== null, condfalse, offset);
-  }),
-  opcode("get_child", (s, obj) => {
-    let resultVar = s.readByte();
-    let [offset, condfalse] = s.readBranchOffset();
-    log.debug(
-      `${hex(s.op_pc)} get_child ${hex(obj)} -> (${hex(
-        resultVar
-      )}) ?[${!condfalse}] ${hex(offset)}`
-    );
+  opcodeImpl(get_prop_len),
+  opcodeImpl(inc),
+  opcodeImpl(dec),
 
-    let o = s.getObject(obj);
-    let child = o.child;
-    if (child) {
-      s.storeVariable(resultVar, child.objnum);
-    } else {
-      s.storeVariable(resultVar, 0);
-    }
-    s.doBranch(child !== null, condfalse, offset);
-  }),
-  opcode("get_parent", (s, obj) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} get_parent ${hex(obj)} -> (${hex(resultVar)})`);
-    let o = s.getObject(obj);
-    if (o === null) log.error("object null in get_parent");
-    let parent_objnum = o === null || o.parent === null ? 0 : o.parent.objnum;
-    s.storeVariable(resultVar, parent_objnum);
-  }),
-  opcode("get_prop_len", (s, propDataAddr) => {
-    let resultVar = s.readByte();
-    log.debug(
-      `${hex(s.op_pc)} get_prop_len ${hex(propDataAddr)} -> (${hex(resultVar)})`
-    );
-    let len = GameObject.getPropertyLength(s, propDataAddr);
-    s.storeVariable(resultVar, len);
-  }),
-  opcode("inc", (s, variable) => {
-    log.debug(`${hex(s.op_pc)} inc ${hex(variable)}`);
-    s.storeVariable(variable, s.toU16(s.toI16(s.loadVariable(variable)) + 1));
-  }),
-  opcode("dec", (s, variable) => {
-    log.debug(`${hex(s.op_pc)} dec ${hex(variable)}`);
-    s.storeVariable(variable, s.toU16(s.toI16(s.loadVariable(variable)) - 1));
-  }),
-  opcode("print_addr", (s, stringAddr) => {
-    log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
-    s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
-  }),
-  opcode("call_1s", (s, routine) => {
-    let resultVar = s.readByte();
-    if (routine === 0) {
-      s.storeVariable(resultVar, 0);
-      return;
-    }
-    routine = s.unpackRoutineAddress(routine);
-    log.debug(`${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`);
-    s.callRoutine(routine, resultVar);
-  }),
-  opcode("remove_obj", (s, obj) => {
-    log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
-    let o = s.getObject(obj);
-    o.unlink();
-  }),
-  opcode("print_obj", (s, obj) => {
-    log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
-    let o = s.getObject(obj);
-    s._screen.print(s, `${o.name}`);
-  }),
-  opcode("ret", (s, value) => s.returnFromRoutine(value)),
-  opcode("jump", (s, addr) => (s.pc = s.pc + s.toI16(addr) - 2)),
-  opcode("print_paddr", (s, packed_addr) => {
-    s._screen.print(
-      s,
-      zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr), true))
-    );
-  }),
-  opcode("load", (s, variable) => {
-    let resultVar = s.readByte();
-    log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
-    s.storeVariable(resultVar, s.loadVariable(variable, false), false);
-  }),
-  opcode("not", (s, value) => {
-    let resultVar = s.readByte();
-    value = value ^ 0xffff;
-    s.storeVariable(resultVar, value);
-  }),
-  opcode("call_1n", (s, routine) => {
-    if (routine === 0) {
-      return;
-    }
-    routine = s.unpackRoutineAddress(routine);
-    log.debug(`${hex(s.op_pc)} call_1n ${hex(routine)}`);
-    s.callRoutine(routine, null);
-  })
+  opcodeImpl(print_addr),
+  opcodeImpl(call_1s),
+
+  opcodeImpl(remove_obj),
+  opcodeImpl(print_obj),
+
+  opcodeImpl(ret),
+  opcodeImpl(jump),
+
+  opcodeImpl(print_paddr),
+  opcodeImpl(load),
+  opcodeImpl(not),
+  opcodeImpl(call_1n)
 ];
 
 let op0 = [
-  opcode("rtrue", s => s.returnFromRoutine(1)),
-  opcode("rfalse", s => s.returnFromRoutine(0)),
-  opcode("print", s => {
-    log.debug(`${hex(s.op_pc)} print <inline-zstring>`);
-    s._screen.print(s, zstringToAscii(s, s.readZString(), true));
-  }),
-  opcode("print_ret", s => {
-    log.debug(`${hex(s.op_pc)} print_ret`);
-    s._screen.print(s, zstringToAscii(s, s.readZString(), true));
-    s.returnFromRoutine(1);
-  }),
+  opcodeImpl(rtrue),
+  opcodeImpl(rfalse),
+  opcodeImpl(print),
+  opcodeImpl(print_ret),
+
   nopcode(),
-  opcode("save", s => {
-    let [offset, condfalse] = s.readBranchOffset();
 
-    let saved = s.saveGame();
-    if (s._version < 5) {
-      s.doBranch(saved, condfalse, offset);
-    } else {
-      throw new Error("unimplemented save for version 5+");
-    }
-  }),
-  opcode("restore", s => {
-    let [offset, condfalse] = s.readBranchOffset();
+  opcodeImpl(save),
+  opcodeImpl(restore),
 
-    let restored = s.restoreGame();
-    if (s._version < 5) {
-      s.doBranch(restored, condfalse, offset);
-    } else {
-      throw new Error("unimplemented restore for version 5+");
-    }
-  }),
   unimplementedOpcode("restart"),
-  opcode("ret_popped", s => {
-    log.debug(`${hex(s.op_pc)} ret_popped`);
-    s.returnFromRoutine(s.popStack());
-  }),
+  opcodeImpl(ret_popped),
   unimplementedOpcode("pop"),
-  opcode("quit", s => {
-    s._quit = true;
-  }),
-  opcode("new_line", s => {
-    s._screen.print(s, "\n");
-  }),
-  opcode("show_status", s => {
-    unimplemented();
-  }),
+  opcodeImpl(quit),
+  opcodeImpl(new_line),
+  opcodeImpl(show_status),
   unimplementedOpcode("verify"),
   unimplementedOpcode("extended"),
   unimplementedOpcode("piracy")
 ];
 
 let opv = [
-  opcode("call", (s, routine, ...args) => {
-    let resultVar = s.readByte();
-    if (routine === 0) {
-      return;
-    }
-    routine = s.unpackRoutineAddress(routine);
-    log.debug(
-      `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
-    );
-    s.callRoutine(routine, resultVar, ...args);
-  }),
-  opcode("storew", (s, array, word_index, value) => {
-    log.debug(
-      `${hex(s.op_pc)} storew ${hex(array)} ${hex(word_index)} ${hex(value)}`
-    );
-    s.setWord((array + 2 * word_index) & 0xffff, value);
-  }),
-  opcode("storeb", (s, array, byte_index, value) => {
-    log.debug(
-      `${hex(s.op_pc)} storeb ${hex(array)} ${hex(byte_index)} ${hex(value)}`
-    );
-    s.setByte((array + byte_index) & 0xffff, value);
-  }),
-  opcode("put_prop", (s, obj, property, value) => {
-    log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
-    let o = s.getObject(obj);
-    if (o === null) {
-      log.warn("put_prop called on null object");
-      return;
-    }
-    o.putProperty(property, value);
-  }),
-  opcode("sread", (s, text, parse, time, routine) => {
-    let max_input = s.getByte(text) + 1;
-    log.debug(`sread max_input=${max_input}`);
-    throw new SuspendForUserInput({ text, parse, time, routine });
-  }),
-  opcode("print_char", (s, ...chars) => {
-    log.debug(`print_char(${chars})`);
-    s._screen.print(s, chars.map(c => String.fromCharCode(c)).join(""));
-  }),
-  opcode("print_num", (s, value) => {
-    s._screen.print(s, s.toI16(value).toString());
-  }),
-  opcode("random", (s, range) => {
-    log.debug(`random(${range})`);
-    let resultVar = s.readByte();
-    if (range <= 0) {
-      // (XXX) can't seed in JS?
-      s.storeVariable(resultVar, 0);
-    } else {
-      let rv = Math.floor(Math.random() * range + 1);
-      s.storeVariable(resultVar, rv);
-    }
-  }),
-  opcode("push", (s, value) => {
-    s.pushStack(value);
-  }),
-  opcode("pull", (s, variable) => {
-    s.storeVariable(variable, s.popStack());
-  }),
-  opcode("split_window", (s, lines) => {
-    s._screen.splitWindow(s, lines);
-  }),
-  opcode("set_window", (s, window) => {
-    s._screen.setOutputWindow(s, window);
-  }),
-  opcode("call_vs2", (s, routine, ...args) => {
-    let resultVar = s.readByte();
-    if (routine === 0) {
-      s.storeVariable(resultVar, 0);
-      return;
-    }
-    routine = s.unpackRoutineAddress(routine);
-    log.debug(
-      `${hex(s.op_pc)} call_vs2 ${hex(routine)} ${args} -> (${hex(resultVar)})`
-    );
-    s.callRoutine(routine, resultVar, ...args);
-  }),
-  opcode("erase_window", (s, window) => {
-    s._screen.clearWindow(s, window);
-  }),
-  opcode("erase_line", (s, value) => {
-    s._screen.clearLine(s, value);
-  }),
-  opcode("set_cursor", (s, line, column, window) => {
-    if (s._version >= 6) {
-      if (line === -1) {
-        s._screen.hideCursor(s);
-        return;
-      }
-      if (line === -2) {
-        s._screen.showCursor(s);
-        return;
-      }
-    }
-    if (s._version < 6) {
-      window = s._screen.getOutputWindow(s);
-    }
+  opcodeImpl(call),
+  opcodeImpl(storew),
+  opcodeImpl(storeb),
+  opcodeImpl(put_prop),
+  opcodeImpl(sread),
+  opcodeImpl(print_char),
+  opcodeImpl(print_num),
+  opcodeImpl(random),
 
-    s._screen.setCursorPosition(s, line, column, window);
-  }),
-  opcode("get_cursor", (s, array) => {
-    log.warn(`get_cursor ${array} -- not implemented`);
-  }),
-  opcode("set_text_style", (s, style) => {
-    s._screen.setTextStyle(s, style);
-  }),
-  opcode("buffer_mode", (s, flag) => {
-    s._screen.setBufferMode(s, flag);
-  }),
-  opcode("output_stream", (s, number, table, width) => {
-    let streamNumber = s.toI16(number);
-    if (streamNumber === 0) {
-      // why emit this opcode at all?
-      return;
-    }
-    if (streamNumber > 0) {
-      s._screen.enableOutputStream(s, streamNumber, table, width);
-      return;
-    }
-    s._screen.disableOutputStream(s, -streamNumber, table, width);
-  }),
-  opcode("input_stream", (s, number) => {
-    s._screen.selectInputStream(s, s.toI16(number));
-  }),
-  opcode("sound_effect", (s, number, effect, volume, routine) => {
-    log.warn(`sound_effect ${number} -- not implemented`);
-  }),
-  opcode("read_char", (s, dev, time, routine) => {
-    let resultVar = s.readByte();
-    //    readline.keyIn("", { hideEchoBack: true, mask: "" });
-    s.storeVariable(resultVar, 32 /*XXX*/);
-  }),
-  opcode("scan_table", (s, x, table, len, form = 0x82) => {
-    let resultVar = s.readByte();
-    let [offset, condfalse] = s.readBranchOffset();
+  opcodeImpl(push),
+  opcodeImpl(pull),
+  opcodeImpl(split_window),
+  opcodeImpl(set_window),
+  opcodeImpl(call_vs2),
+  opcodeImpl(erase_window),
+  opcodeImpl(erase_line),
+  opcodeImpl(set_cursor),
+  opcodeImpl(get_cursor),
+  opcodeImpl(set_text_style),
+  opcodeImpl(buffer_mode),
+  opcodeImpl(output_stream),
+  opcodeImpl(input_stream),
+  opcodeImpl(sound_effect),
+  opcodeImpl(read_char),
+  opcodeImpl(scan_table),
 
-    log.debug(`scan_table ${hex(x)} ${hex(table)} ${hex(len)} ${hex(form)}`);
-
-    // XXX can we verify that 'x' is the proper sized value?
-    let searchForWord = (form & 0x80) === 80;
-    let elementSize = form & 0x7f;
-
-    let cur = table;
-    let end = table + len;
-    while (cur < end) {
-      let table_element = searchForWord ? s.getWord(cur) : s.getByte(cur);
-      if (table_element === x) {
-        log.debug(`+ found element at ${hex(cur)}`);
-        s.storeVariable(resultVar, cur);
-        s.doBranch(true, condfalse, offset);
-        return;
-      }
-      cur += elementSize;
-    }
-
-    log.debug(`+ didn't find element`);
-    s.storeVariable(resultVar, 0);
-    // don't branch
-  }),
   unimplementedOpcode("not"),
   unimplementedOpcode("call_vn"),
-  opcode("call_vn2", (s, routine, ...args) => {
-    if (routine === 0) {
-      return;
-    }
-    log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
-    routine = s.unpackRoutineAddress(routine);
-    s.callRoutine(routine, null, ...args);
-  }),
-  opcode("tokenise", (s, text, tokenBuffer, dict, flag) => {
-    unimplemented();
-  }),
+
+  opcodeImpl(call_vn2),
+  opcodeImpl(tokenise),
+
   unimplementedOpcode("encode_text"),
   unimplementedOpcode("copy_table"),
-  opcode("print_table", (s, zscii_text, width, height, skip) => {
-    log.debug("print_table");
-    if (width) log.debug(`width = ${width}`);
-    if (height) log.debug(`height = ${height}`);
-    if (skip) log_debug(`skip = ${skip}`);
-  }),
-  opcode("check_arg_count", (s, argNumber) => {
-    let [offset, condfalse] = s.readBranchOffset();
 
-    s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
-  })
+  opcodeImpl(print_table),
+  opcodeImpl(check_arg_count)
 ];
 
 let op3 = [illegalOpcode(), op2[1]];
@@ -1054,17 +1208,39 @@ export default class Game {
     let timeoutId = setTimeout(() => {
       clearTimeout(timeoutId);
 
-      let { text, parse } = input_state;
+      input = input.toLowerCase();
 
-      let max_input = this.getByte(text) + 1;
-      input = input.slice(0, max_input);
-      if (this._version < 5 || (this._version >= 5 && parse > 0)) {
-        this.tokenise(input, parse);
+      let { textBuffer, parseBuffer } = input_state;
+
+      let max_input = this.getByte(textBuffer);
+      if (this._version <= 4) {
+        // we have to append a terminator character, so the amount of allowed user input is 1 less.
+        max_input--;
       }
+      input = input.slice(0, max_input);
+
+      for (let i = 0, e = input.length; i < e; i++) {
+        let c = input.charCodeAt(i);
+        // XXX(toshok) convert `c` to zscii.  for now assume we're dealing with ascii anyway and just
+        // pass it through.
+
+        this.setByte(textBuffer + (this._version <= 4 ? 1 : 2) + i, c);
+      }
+
+      if (this._version <= 4) {
+        // store our terminating \0
+        this.setByte(textBuffer + 1 + input.length, 0);
+      } else {
+        // store the length of the string at offset 1.  no terminator in these versions.
+        this.setByte(textBuffer + 1, input.length);
+      }
+
+      this.tokeniseLine(textBuffer, parseBuffer, 0, false);
 
       if (this._version >= 5) {
-        log.error("sread doesn't store the result anywhere");
+        log.error("sread doesn't store the last key (return) anywhere");
       }
+
       this.executeLoop();
     });
   }
@@ -1396,8 +1572,7 @@ export default class Game {
 
   // XXX(toshok) woefully inadequate, but should handle ascii + separators
   encodeToken(text, padding = 0x05) {
-    log.info(`encodeToken(${text})`);
-
+    log.debug(`encodeToken(${text})`);
     let resolution = this._version > 3 ? 3 : 2;
 
     // chop it off at 6 characters (the max)
@@ -1422,7 +1597,7 @@ export default class Game {
     }
     zwords[resolution - 1] |= 0x8000;
 
-    log.info(`returning ${zwords}`);
+    log.debug(`returning ${zwords}`);
     return zwords;
   }
 
@@ -1468,6 +1643,113 @@ export default class Game {
       this.setByte(token_storage + 2, end - start);
       this.setByte(token_storage + 3, start + 1);
     }
+  }
+
+  tokeniseText(textBuffer, length, from, parseBuffer, dict, flag) {
+    let addr;
+    let token_max, token_count;
+
+    token_max = this.getByte(parseBuffer);
+    token_count = this.getByte(parseBuffer + 1);
+
+    if (token_count >= token_max) {
+      // no space for more tokens
+      return;
+    }
+
+    this.setByte(parseBuffer + 1, token_count + 1);
+
+    // frotz decodes then encodes again.  not sure why.
+    let wordZChars = [];
+    for (let i = 0; i < length; i++) {
+      wordZChars.push(String.fromCharCode(this.getByte(textBuffer + from + i)));
+    }
+
+    let tokenword = this.encodeToken(wordZChars.join(""));
+    let token_addr = this.lookupToken(this._dict, tokenword);
+    if (token_addr !== 0 || !flag) {
+      let token_storage = 4 * token_count + parseBuffer + 2;
+      this.setWord(token_storage, token_addr);
+      this.setByte(token_storage + 2, length);
+      this.setByte(token_storage + 3, from);
+    }
+  }
+
+  tokeniseLine(textBuffer, parseBuffer, dict, flag) {
+    // default to the standard dictionary
+    if (dict === 0) {
+      dict = this._dict;
+    }
+
+    // reset token count to 0
+    this.setByte(parseBuffer + 1, 0);
+
+    let addr1 = textBuffer;
+    let addr2 = 0;
+    let length = 0;
+
+    if (this._version >= 5) {
+      addr1++; // skip the max length byte
+      length = this.getByte(addr1);
+    }
+
+    let c;
+    do {
+      let sep_addr;
+      let sep_count;
+      let separator;
+
+      addr1++;
+
+      // fetch next character
+      if (this._version >= 5 && addr === textBuffer + 2 + length) {
+        c = 0;
+      } else {
+        c = this.getByte(addr1);
+      }
+
+      // check for separator
+      sep_addr = dict;
+      sep_count = this.getByte(sep_addr++);
+      do {
+        separator = this.getByte(sep_addr++);
+      } while (c != separator && --sep_count != 0);
+
+      /* This could be the start or the end of a word */
+
+      if (sep_count == 0 && c != 32 && c != 0) {
+        if (addr2 == 0) {
+          addr2 = addr1;
+        }
+      } else if (addr2 != 0) {
+        this.tokeniseText(
+          textBuffer,
+          addr1 - addr2,
+          addr2 - textBuffer,
+          parseBuffer,
+          dict,
+          flag
+        );
+
+        addr2 = 0;
+      }
+
+      if (sep_count != 0) {
+        this.tokeniseText(textBuffer, 1, addr1 - text, parseBuffer, dict, flag);
+      }
+    } while (c != 0);
+
+    /*
+    // dump out the contents of the parseBuffer
+    console.log(`token_max = ${this.getByte(parseBuffer)}`);
+    console.log(`token_count = ${this.getByte(parseBuffer + 1)}`);
+    for (let i = 0; i < this.getByte(parseBuffer + 1); i++) {
+      let addr = this.getWord(parseBuffer + 2 + 4 * i);
+      let length = this.getByte(parseBuffer + 2 + 4 * i + 2);
+      let from = this.getByte(parseBuffer + 2 + 4 * i + 3);
+      console.log(` token[${i}] = ${addr} (from ${from}, length ${length})`);
+    }
+    */
   }
 
   tokenise(inputtext, parsebuffer) {

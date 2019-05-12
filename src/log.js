@@ -1,4 +1,4 @@
-import * as colors from "ansicolors";
+import chalk from "chalk";
 
 export default class Log {
   constructor(debug_flag) {
@@ -6,16 +6,16 @@ export default class Log {
   }
 
   _debug(msg) {
-    return Boolean(process.stdout.isTTY) ? colors.brightBlue(msg) : msg;
+    return Boolean(process.stdout.isTTY) ? chalk.blueBright(msg) : msg;
   }
   _info(msg) {
-    return Boolean(process.stdout.isTTY) ? colors.brightGreen(msg) : msg;
+    return Boolean(process.stdout.isTTY) ? chalk.greenBright(msg) : msg;
   }
   _warn(msg) {
-    return Boolean(process.stdout.isTTY) ? colors.red(msg) : msg;
+    return Boolean(process.stdout.isTTY) ? chalk.red(msg) : msg;
   }
   _error(msg) {
-    return Boolean(process.stdout.isTTY) ? colors.brightRed(msg) : msg;
+    return Boolean(process.stdout.isTTY) ? chalk.redBright(msg) : msg;
   }
 
   debug(msg) {

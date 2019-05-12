@@ -1,8 +1,25 @@
 import readline from "readline-sync";
+import chalk from "chalk";
+
+const TextStyles = {
+  Roman: 0,
+  ReverseVideo: 1,
+  Bold: 2,
+  Italic: 4,
+  FixedPitch: 8
+};
+
+const BufferModes = {
+  NotBuffered: 0,
+  Buffered: 1
+};
 
 export default class StdioScreen {
   constructor(log) {
     this.log = log;
+    this.textStyle = TextStyles.Roman;
+    this.outputWindowId = 0;
+    this.bufferMode = BufferModes.Buffered;
   }
 
   getInputFromUser(game, input_state) {
@@ -11,58 +28,78 @@ export default class StdioScreen {
   }
 
   print(game, str) {
+    if (this.outputWindowId !== 0) {
+      return;
+    }
+    if (this.textStyle & TextStyles.ReverseVideo) {
+      str = chalk.inverse(str);
+    }
+    if (this.textStyle & TextStyles.Bold) {
+      str = chalk.bold(str);
+    }
+    if (this.textStyle & TextStyles.Italic) {
+      str = chalk.italic(str);
+    }
     process.stdout.write(str);
   }
 
   splitWindow(game, lines) {
-    this.log.error("not implemented: console.js splitWindow");
+    this.log.debug(`not implemented: console.js splitWindow(${lines})`);
   }
 
   setOutputWindow(game, windowId) {
-    this.log.error("not implemented: console.js setOutputWindow");
+    this.outputWindowId = windowId;
   }
 
   getOutputWindow(game) {
-    this.log.error("not implemented: console.js getOutputWindow");
+    return this.outputWindowId;
   }
 
   clearWindow(game, windowId) {
-    this.log.error("not implemented: console.js clearWindow");
+    this.log.debug(`not implemented: console.js clearWindow(${windowId})`);
   }
 
   clearLine(game, value) {
-    this.log.error("not implemented: console.js clearLine");
+    this.log.debug(`not implemented: console.js clearLine(${value})`);
   }
 
   setCursorPosition(game, line, column, windowId) {
-    this.log.error("not implemented: console.js setCursorPosition");
+    this.log.debug(
+      `not implemented: console.js setCursorPosition(${line}, ${column}, ${windowId})`
+    );
   }
 
   hideCursor(game, windowId) {
-    this.log.error("not implemented: console.js hideCursor");
+    this.log.debug(`not implemented: console.js hideCursor(${windowId})`);
   }
 
   showCursor(game, windowId) {
-    this.log.error("not implemented: console.js showCursor");
+    this.log.debug(`not implemented: console.js showCursor(${windowId})`);
   }
 
-  setBufferMode(game, style) {
-    this.log.error("not implemented: console.js showBufferMode");
+  setBufferMode(game, mode) {
+    this.bufferMode = mode;
   }
 
   setTextStyle(game, style) {
-    this.log.error("not implemented: console.js showTextStyle");
+    this.textStyle = style;
   }
 
   enableOutputStream(game, streamId, table, width) {
-    this.log.error("not implemented: console.js enableOutputStream");
+    this.log.debug(
+      `not implemented: console.js enableOutputStream(${streamId}, ${table}, ${width})`
+    );
   }
 
   disableOutputStream(game, streamId, table, width) {
-    this.log.error("not implemented: console.js disableOutputStream");
+    this.log.debug(
+      `not implemented: console.js disableOutputStream(${streamId}, ${table}, ${width})`
+    );
   }
 
   selectInputStream(game, streamId) {
-    this.log.error("not implemented: console.js selectInputStream");
+    this.log.debug(
+      `not implemented: console.js selectInputStream(${streamId})`
+    );
   }
 }
