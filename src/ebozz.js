@@ -2,20 +2,11 @@ import * as fs from "fs";
 import * as readline from "readline-sync";
 
 import GameObject from "./GameObject";
+import SuspendForUserInput from "./SuspendForUserInput";
 
-import { op0, op1, op2, op3, op4, opv, hex } from "./opcodes";
-
-export class SuspendForUserInput {
-  constructor(state) {
-    this._state = state;
-  }
-  get state() {
-    return this._state;
-  }
-}
-
-// XXX(toshok) ugh, module-level global for logging.
-export let log;
+import { op0, op1, op2, op3, op4, opv } from "./opcodes";
+import { toI16 } from "./cast16";
+import { hex, dumpParsebuffer } from "./debug-helpers";
 
 //  $$00    Large constant (0 to 65535)    2 bytes
 //  $$01    Small constant (0 to 255)      1 byte
@@ -31,133 +22,6 @@ const INSTRUCTION_FORM_SHORT = 1;
 const INSTRUCTION_FORM_VARIABLE = 2;
 const INSTRUCTION_FORM_EXTENDED = 3;
 
-//let log_fp = fs.openSync('./ebozz_log', 'w');
-
-function executeInstruction(s) {
-  // If the top two bits of the opcode are $$11 the form is
-  // variable; if $$10, the form is short. If the opcode is 190 ($BE
-  // in hexadecimal) and the version is 5 or later, the form is
-  // "extended". Otherwise, the form is "long".
-
-  let op_pc = s.pc;
-  let opcode = s.readByte();
-
-  let operandTypes = [];
-  let reallyVariable = false;
-  let form;
-
-  //log.debug("opbyte = " + opcode);
-
-  //fs.writeSync(log_fp, `${hex(op_pc)} ${hex(opcode)}`);
-  log.debug("opbyte = " + opcode);
-
-  if ((opcode & 0xc0) === 0xc0) {
-    form = INSTRUCTION_FORM_VARIABLE;
-
-    if ((opcode & 0x20) !== 0) {
-      reallyVariable = true;
-    } else {
-      // not really variable - 2 args
-    }
-
-    if (form === INSTRUCTION_FORM_VARIABLE) {
-      let bits = s.readByte();
-      for (let i = 0; i < 4; i++) {
-        let optype = (bits >> ((3 - i) * 2)) & 0x03;
-        if (optype !== OPERAND_TYPE_OMITTED) {
-          operandTypes.push(optype);
-        } else {
-          break;
-        }
-      }
-    }
-
-    opcode = opcode & 0x1f;
-  } else if ((opcode & 0x80) === 0x80) {
-    form = INSTRUCTION_FORM_SHORT;
-
-    let optype = (opcode & 0x30) >> 4;
-    if (optype !== OPERAND_TYPE_OMITTED) operandTypes = [optype];
-
-    opcode = opcode & 0x0f;
-  }
-  // XXX opcode == 190 and version >= 5
-  else {
-    form = INSTRUCTION_FORM_LONG;
-
-    operandTypes.push(
-      (opcode & 0x40) === 0x40 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
-    );
-    operandTypes.push(
-      (opcode & 0x20) === 0x20 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
-    );
-
-    opcode = opcode & 0x1f;
-  }
-
-  //log.debug(`[${hex(op_pc)}] opcode ${opcode}`);
-
-  let operands = [];
-  for (let optype of operandTypes) {
-    if (optype === OPERAND_TYPE_LARGE) {
-      let op = s.readWord();
-      //fs.writeSync(log_fp, ` ${hex(op)}`);
-      //log.debug(`  large(${hex(op)})`);
-      operands.push(op);
-    } else if (optype === OPERAND_TYPE_SMALL) {
-      let o = s.readByte();
-      //fs.writeSync(log_fp, ` ${hex(o)}`);
-      //log.debug(`  small(${hex(o)})`);
-      operands.push(o);
-    } else if (optype === OPERAND_TYPE_VARIABLE) {
-      let varnum = s.readByte();
-      let varval = s.loadVariable(varnum);
-      //fs.writeSync(log_fp, ` ${hex(varval)}`);
-      //log.debug(`  var_ref(${hex(varnum)}) = ${hex(varval)}`);
-      operands.push(varval);
-    } else {
-      //log.debug(optype);
-      throw new Error("XXX");
-    }
-  }
-
-  let impl;
-  try {
-    if (reallyVariable) {
-      impl = opv[opcode].impl;
-    } else {
-      switch (operands.length) {
-        case 0:
-          impl = op0[opcode].impl;
-          break;
-        case 1:
-          impl = op1[opcode].impl;
-          break;
-        case 2:
-          impl = op2[opcode].impl;
-          break;
-        case 3:
-          impl = op3[opcode].impl;
-          break;
-        case 4:
-          impl = op4[opcode].impl;
-          break;
-        default:
-          throw new Error("unhandled number of operands");
-      }
-    }
-  } catch (e) {
-    console.error(e);
-    log.error(
-      `error at pc=${hex(op_pc)}, opcode=${hex(opcode)}: ${e.toString()}`
-    );
-    throw e;
-  }
-  impl(s, ...operands);
-
-  //fs.writeSync(log_fp, '\n');
-}
-
 export default class Game {
   constructor(
     story_buffer,
@@ -168,9 +32,6 @@ export default class Game {
     restore_fn
     */
   ) {
-    // XXX(toshok) global log
-    log = log_impl;
-
     this._mem = story_buffer;
     this._log = log_impl;
     this._screen = screen;
@@ -185,16 +46,12 @@ export default class Game {
     this._object_table = this.getWord(0x0a);
     this._dict = this.getWord(0x08);
 
-    log.info(`game version: ${this._version}`);
+    this._log.info(`game version: ${this._version}`);
 
     if (this._version === 6 || this._version === 7) {
       this._routine_offset = this.getWord(0x28);
       this._strings_offset = this.getWord(0x2a);
     }
-
-    let cvt_buffer = new ArrayBuffer(2);
-    this._i16_array = new Int16Array(cvt_buffer);
-    this._u16_array = new Uint16Array(cvt_buffer);
 
     this._game_objects = [];
 
@@ -328,55 +185,6 @@ export default class Game {
     }
   }
 
-  dumpHeader() {
-    console.log("header:");
-    console.log(`Z-code version:           ${this.getByte(0)}`);
-    console.log(`Start PC:                 ${hex(this.getWord(0x06))}`);
-    console.log(`Global variables address: ${hex(this.getWord(0x0c))}`);
-    console.log(`Alphabet table address:   ${hex(this.getWord(0x34))}`);
-    console.log(`Object table address:     ${hex(this.getWord(0x0a))}`);
-    console.log();
-  }
-
-  dumpObjectTable() {
-    let objects_without_parents = [];
-    for (let i = 1; i < 255; i++) {
-      let o = this.getObject(i);
-      if (o.parent === null) objects_without_parents.push(o);
-    }
-    console.log(`${objects_without_parents.length} root objects`);
-    objects_without_parents.forEach(o => o.dump());
-    console.log();
-  }
-
-  dumpDictionary() {
-    console.log("dictionary:");
-    let p = this._dict;
-    let num_sep = this.getByte(p++);
-    let sep_zscii = [];
-    for (let i = 0; i < num_sep; i++) sep_zscii.push(this.getByte(p++));
-
-    console.log(
-      `Separators: ${sep_zscii.map(ch => String.fromCharCode(ch)).join(" ")}`
-    );
-
-    let entry_length = this.getByte(p++);
-    let num_entries = this.getWord(p);
-    p += 2;
-
-    for (let i = 0; i < num_entries; i++) {
-      let entry_text = zstringToAscii(this, this.getZString(p), false);
-      console.log(
-        ` [${i}] ${entry_text} ${hex(this.getWord(p))} ${hex(
-          this.getWord(p + 2)
-        )}`
-      );
-      p += entry_length; // we skip the data
-    }
-
-    console.log();
-  }
-
   continueAfterUserInput(input_state, input) {
     // probably not fully necessary, but unwind back to the event loop before transfering
     // back to game code.
@@ -413,7 +221,7 @@ export default class Game {
       this.tokeniseLine(textBuffer, parseBuffer, 0, false);
 
       if (this._version >= 5) {
-        log.error("sread doesn't store the last key (return) anywhere");
+        this._log.error("sread doesn't store the last key (return) anywhere");
       }
 
       this.executeLoop();
@@ -429,7 +237,7 @@ export default class Game {
     try {
       while (!this._quit) {
         this._op_pc = this._pc;
-        executeInstruction(this);
+        this.executeInstruction();
       }
     } catch (e) {
       if (e instanceof SuspendForUserInput) {
@@ -446,6 +254,117 @@ export default class Game {
         console.error(e);
       }
     }
+  }
+
+  executeInstruction() {
+    // If the top two bits of the opcode are $$11 the form is
+    // variable; if $$10, the form is short. If the opcode is 190 ($BE
+    // in hexadecimal) and the version is 5 or later, the form is
+    // "extended". Otherwise, the form is "long".
+
+    let op_pc = this.pc;
+    let opcode = this.readByte();
+
+    let operandTypes = [];
+    let reallyVariable = false;
+    let form;
+
+    this._log.debug("opbyte = " + opcode);
+
+    if ((opcode & 0xc0) === 0xc0) {
+      form = INSTRUCTION_FORM_VARIABLE;
+
+      if ((opcode & 0x20) !== 0) {
+        reallyVariable = true;
+      } else {
+        // not really variable - 2 args
+      }
+
+      if (form === INSTRUCTION_FORM_VARIABLE) {
+        let bits = this.readByte();
+        for (let i = 0; i < 4; i++) {
+          let optype = (bits >> ((3 - i) * 2)) & 0x03;
+          if (optype !== OPERAND_TYPE_OMITTED) {
+            operandTypes.push(optype);
+          } else {
+            break;
+          }
+        }
+      }
+
+      opcode = opcode & 0x1f;
+    } else if ((opcode & 0x80) === 0x80) {
+      form = INSTRUCTION_FORM_SHORT;
+
+      let optype = (opcode & 0x30) >> 4;
+      if (optype !== OPERAND_TYPE_OMITTED) operandTypes = [optype];
+
+      opcode = opcode & 0x0f;
+    }
+    // XXX opcode == 190 and version >= 5
+    else {
+      form = INSTRUCTION_FORM_LONG;
+
+      operandTypes.push(
+        (opcode & 0x40) === 0x40 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
+      );
+      operandTypes.push(
+        (opcode & 0x20) === 0x20 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
+      );
+
+      opcode = opcode & 0x1f;
+    }
+
+    let operands = [];
+    for (let optype of operandTypes) {
+      if (optype === OPERAND_TYPE_LARGE) {
+        let op = this.readWord();
+        operands.push(op);
+      } else if (optype === OPERAND_TYPE_SMALL) {
+        let o = this.readByte();
+        operands.push(o);
+      } else if (optype === OPERAND_TYPE_VARIABLE) {
+        let varnum = this.readByte();
+        let varval = this.loadVariable(varnum);
+        operands.push(varval);
+      } else {
+        throw new Error("XXX");
+      }
+    }
+
+    let impl;
+    try {
+      if (reallyVariable) {
+        impl = opv[opcode].impl;
+      } else {
+        switch (operands.length) {
+          case 0:
+            impl = op0[opcode].impl;
+            break;
+          case 1:
+            impl = op1[opcode].impl;
+            break;
+          case 2:
+            impl = op2[opcode].impl;
+            break;
+          case 3:
+            impl = op3[opcode].impl;
+            break;
+          case 4:
+            impl = op4[opcode].impl;
+            break;
+          default:
+            throw new Error("unhandled number of operands");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      this._log.error(
+        `error at pc=${hex(op_pc)}, opcode=${hex(opcode)}: ${e.toString()}`
+      );
+      throw e;
+    }
+    impl(this, ...operands);
   }
 
   unpackRoutineAddress(addr) {
@@ -483,17 +402,17 @@ export default class Game {
   pushStack(v) {
     if (v === undefined || v === null) throw new Error("bad value on push");
     this._stack.push(v);
-    log.debug(
+    this._log.debug(
       `     after pushStack(${hex(v)}): ${this._stack.map(el => hex(el))}`
     );
   }
   popStack() {
-    log.debug(`     before popStack: ${this._stack.map(el => hex(el))}`);
+    this._log.debug(`     before popStack: ${this._stack.map(el => hex(el))}`);
     if (this._stack.length === 0) throw new Error("empty stack");
     return this._stack.pop();
   }
   peekStack() {
-    log.debug(`     before peekStack: ${this._stack.map(el => hex(el))}`);
+    this._log.debug(`     before peekStack: ${this._stack.map(el => hex(el))}`);
     if (this._stack.length === 0) throw new Error("empty stack");
     return this._stack[this._stack.length - 1];
   }
@@ -596,7 +515,7 @@ export default class Game {
       let w = this.getWord(addr);
       chars.push((w >> 10) & 0x1f, (w >> 5) & 0x1f, (w >> 0) & 0x1f);
       if ((w & 0x8000) !== 0) {
-        log.warn("high bit found in length string.");
+        this._log.warn("high bit found in length string.");
         break;
       }
       addr += 2;
@@ -616,23 +535,23 @@ export default class Game {
       // propagate sign bit
       if ((off1 & 0x20) !== 0) off1 |= 0xc0;
 
-      offset = this.toI16((off1 << 8) | this.readByte());
+      offset = toI16((off1 << 8) | this.readByte());
     }
     return [offset, (branchData & 0x80) === 0x00];
   }
 
   doBranch(cond, condfalse, offset) {
-    log.debug(`     ${cond} ${!condfalse} ${offset}`);
+    this._log.debug(`     ${cond} ${!condfalse} ${offset}`);
     if ((cond && !condfalse) || (!cond && condfalse)) {
       if (offset === 0) {
-        log.debug("     returning false");
+        this._log.debug("     returning false");
         this.returnFromRoutine(0);
       } else if (offset === 1) {
-        log.debug("     returning true");
+        this._log.debug("     returning true");
         this.returnFromRoutine(1);
       } else {
         this._pc = this._pc + offset - 2;
-        log.debug(`     taking branch to ${this._pc}!`);
+        this._log.debug(`     taking branch to ${this._pc}!`);
       }
     }
   }
@@ -680,16 +599,6 @@ export default class Game {
   getArgCount() {
     let cur_frame = this._callstack[this._callstack.length - 1];
     return cur_frame.arg_count;
-  }
-
-  toI16(_ui16) {
-    this._u16_array[0] = _ui16;
-    return this._i16_array[0];
-  }
-
-  toU16(_i16) {
-    this._i16_array[0] = _i16;
-    return this._u16_array[0];
   }
 
   lookupToken(dict, encoded_token_words) {
@@ -748,7 +657,7 @@ export default class Game {
 
   // XXX(toshok) woefully inadequate, but should handle ascii + separators
   encodeToken(text, padding = 0x05) {
-    log.debug(`encodeToken(${text})`);
+    this._log.debug(`encodeToken(${text})`);
     let resolution = this._version > 3 ? 3 : 2;
 
     // chop it off at 6 characters (the max)
@@ -773,26 +682,8 @@ export default class Game {
     }
     zwords[resolution - 1] |= 0x8000;
 
-    log.debug(`returning ${zwords}`);
+    this._log.debug(`returning ${zwords}`);
     return zwords;
-  }
-
-  dumpParsebuffer(parsebuffer) {
-    let max = this.getByte(parsebuffer);
-    parsebuffer++;
-    let count = this.getByte(parsebuffer);
-    parsebuffer++;
-    log.debug(` max = ${max}, count = ${count} tokens = [`);
-    for (let i = 0; i < count; i++) {
-      let addr = this.getWord(parsebuffer);
-      parsebuffer += 2;
-      let length = this.getByte(parsebuffer);
-      parsebuffer++;
-      let from = this.getByte(parsebuffer);
-      parsebuffer++;
-      log.debug(` (${hex(addr)}, ${hex(from)}, ${hex(length)})`);
-    }
-    log.debug(" ]");
   }
 
   tokenise_word(inputbuffer, start, end, parsebuffer) {
@@ -808,10 +699,10 @@ export default class Game {
 
     let wordtext = inputbuffer.slice(start, end).toLowerCase();
     let tokenword = this.encodeToken(wordtext);
-    //log.warn(`tokenise_word "${wordtext} (${hex(tokenword[0])},${hex(tokenword[1])})"`);
+    //this._log.warn(`tokenise_word "${wordtext} (${hex(tokenword[0])},${hex(tokenword[1])})"`);
 
     let token_addr = this.lookupToken(this._dict, tokenword);
-    //log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
+    //this._log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
     if (token_addr !== 0) {
       let token_storage = 4 * count_tokens + 2 + parsebuffer;
       this.setByte(parsebuffer + 1, ++count_tokens);
@@ -914,18 +805,6 @@ export default class Game {
         this.tokeniseText(textBuffer, 1, addr1 - text, parseBuffer, dict, flag);
       }
     } while (c != 0);
-
-    /*
-    // dump out the contents of the parseBuffer
-    console.log(`token_max = ${this.getByte(parseBuffer)}`);
-    console.log(`token_count = ${this.getByte(parseBuffer + 1)}`);
-    for (let i = 0; i < this.getByte(parseBuffer + 1); i++) {
-      let addr = this.getWord(parseBuffer + 2 + 4 * i);
-      let length = this.getByte(parseBuffer + 2 + 4 * i + 2);
-      let from = this.getByte(parseBuffer + 2 + 4 * i + 3);
-      console.log(` token[${i}] = ${addr} (from ${from}, length ${length})`);
-    }
-    */
   }
 
   tokenise(inputtext, parsebuffer) {
@@ -937,7 +816,9 @@ export default class Game {
     for (let i = 0; i < num_sep; i++)
       sep_zscii.push(this.getByte(this._dict + 1 + i));
 
-    log.debug(`sep_zscii = ${sep_zscii.map(ch => String.fromCharCode(ch))}`);
+    this._log.debug(
+      `sep_zscii = ${sep_zscii.map(ch => String.fromCharCode(ch))}`
+    );
 
     function is_separator(c) {
       return sep_zscii.indexOf(c.charCodeAt(0)) !== -1;
@@ -980,6 +861,6 @@ export default class Game {
       }
     }
 
-    this.dumpParsebuffer(parsebuffer);
+    dumpParsebuffer(this, parsebuffer);
   }
 }
