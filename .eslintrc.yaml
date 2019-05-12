@@ -1,0 +1,13 @@
+---
+env:
+  es6: true
+  browser: true
+extends:
+  - prettier
+  - plugin:import/errors
+  - plugin:import/warnings
+  - plugin:prettier/recommended
+parserOptions:
+  ecmaVersion: 2017
+  sourceType: module
+

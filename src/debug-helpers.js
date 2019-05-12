@@ -12,7 +12,7 @@ export function dumpHeader(s) {
   console.log();
 }
 
-function dumpObjectTable(s) {
+export function dumpObjectTable(s) {
   let objects_without_parents = [];
   for (let i = 1; i < 255; i++) {
     let o = s.getObject(i);

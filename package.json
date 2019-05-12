@@ -9,6 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "babel -d dist/ src/",
+    "lint": "eslint src/*.js",
     "ebozz": "node dist/console.js",
     "slackbot": "node dist/slack.js",
     "zork1": "node dist/console.js tests/zork1.dat",
@@ -37,6 +38,10 @@
     "@babel/cli": "^7.4.3",
     "@babel/core": "^7.4.3",
     "@babel/preset-env": "^7.4.3",
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^4.2.0",
+    "eslint-plugin-import": "^2.17.2",
+    "eslint-plugin-prettier": "^3.1.0",
     "prettier": "^1.17.0"
   }
 }
