@@ -3,6 +3,7 @@ import Log from "./log";
 import Game from "./ebozz";
 import BlessedScreen from "./blessed-screen";
 import StdioScreen from "./stdio-screen";
+import { dumpHeader, dumpDictionary, dumpObjectTable } from "./debug-helpers";
 
 import * as fs from "fs";
 import nopt from "nopt";
@@ -60,10 +61,18 @@ let storage = {
 
 let game = new Game(b, log, screen, storage);
 
-if (parsed.header) game.dumpHeader();
+if (parsed.header) {
+  dumpHeader(game);
+}
 
-if (parsed.objectTree) game.dumpObjectTable();
+if (parsed.objectTree) {
+  dumpObjectTable(game);
+}
 
-if (parsed.dict) game.dumpDictionary();
+if (parsed.dict) {
+  dumpDictionary(game);
+}
 
-if (!parsed.noExec) game.execute();
+if (!parsed.noExec) {
+  game.execute();
+}

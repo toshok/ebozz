@@ -23,15 +23,7 @@ const INSTRUCTION_FORM_VARIABLE = 2;
 const INSTRUCTION_FORM_EXTENDED = 3;
 
 export default class Game {
-  constructor(
-    story_buffer,
-    log_impl,
-    screen,
-    storage
-    /*
-    restore_fn
-    */
-  ) {
+  constructor(story_buffer, log_impl, screen, storage) {
     this._mem = story_buffer;
     this._log = log_impl;
     this._screen = screen;
