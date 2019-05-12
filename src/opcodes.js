@@ -37,7 +37,7 @@ function opcodeImpl(fn) {
   return opcode(fn.name, fn);
 }
 
-// actual opcodes
+// branch opcodes
 function je(s, a, b, c, d) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
@@ -70,32 +70,6 @@ function jg(s, a, b) {
   s.doBranch(toI16(a) > toI16(b), condfalse, offset);
 }
 
-function dec_chk(s, variable, value) {
-  let [offset, condfalse] = s.readBranchOffset();
-  s._log.debug(
-    `${hex(s.op_pc)} dec_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
-      s.pc + offset - 2
-    )}`
-  );
-  let new_val = toI16(s.loadVariable(variable)) - 1;
-  s.storeVariable(variable, toU16(new_val));
-  s._log.debug(`     ${new_val} <? ${value}`);
-  s.doBranch(new_val < toI16(value), condfalse, offset);
-}
-
-function inc_chk(s, variable, value) {
-  let [offset, condfalse] = s.readBranchOffset();
-  s._log.debug(
-    `${hex(s.op_pc)} inc_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
-      s.pc + offset - 2
-    )}`
-  );
-  let new_val = toI16(s.loadVariable(variable)) + 1;
-  s.storeVariable(variable, toU16(new_val));
-  s._log.debug(`     ${new_val} ?> ${value}`);
-  s.doBranch(new_val > toI16(value), condfalse, offset);
-}
-
 function jin(s, obj1, obj2) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
@@ -113,6 +87,18 @@ function jin(s, obj1, obj2) {
   }
 }
 
+function jz(s, a) {
+  let [offset, condfalse] = s.readBranchOffset();
+  s._log.debug(
+    `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
+  );
+  s.doBranch(a === 0, condfalse, offset);
+}
+
+function jump(s, addr) {
+  s.pc = s.pc + toI16(addr) - 2;
+}
+
 function test(s, bitmap, flags) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
@@ -123,6 +109,13 @@ function test(s, bitmap, flags) {
   s.doBranch((bitmap & flags) === flags, condfalse, offset);
 }
 
+function check_arg_count(s, argNumber) {
+  let [offset, condfalse] = s.readBranchOffset();
+
+  s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
+}
+
+// math opcodes
 function or(s, a, b) {
   s.storeVariable(s.readByte(), a | b);
 }
@@ -131,6 +124,31 @@ function and(s, a, b) {
   s.storeVariable(s.readByte(), a & b);
 }
 
+function add(s, a, b) {
+  s.storeVariable(s.readByte(), toI16(a) + toI16(b));
+}
+
+function sub(s, a, b) {
+  s.storeVariable(s.readByte(), toI16(a) - toI16(b));
+}
+
+function mul(s, a, b) {
+  s.storeVariable(s.readByte(), toI16(a) * toI16(b));
+}
+
+function div(s, a, b) {
+  s.storeVariable(s.readByte(), Math.floor(toI16(a) / toI16(b)));
+}
+
+function mod(s, a, b) {
+  s.storeVariable(s.readByte(), toI16(a) % toI16(b));
+}
+
+function not(s, value) {
+  s.storeVariable(s.readByte(), value ^ 0xffff);
+}
+
+// object/attribute related opcodes
 function test_attr(s, obj, attribute) {
   //fs.writeSync(log_fp, `+  ${hex(obj)} / ${hex(attribute)}\n`);
   let [offset, condfalse] = s.readBranchOffset();
@@ -158,11 +176,6 @@ function clear_attr(s, obj, attribute) {
   s._log.debug(`${hex(s.op_pc)} clear_attr ${obj} ${attribute}`);
   let o = s.getObject(obj);
   o.clearAttribute(attribute);
-}
-
-function store(s, variable, value) {
-  s._log.debug(`${hex(s.op_pc)} store (${hex(variable)}) ${hex(value)}`);
-  s.storeVariable(variable, value, true);
 }
 
 function insert_obj(s, obj, destination) {
@@ -193,26 +206,6 @@ function insert_obj(s, obj, destination) {
   o.sibling = desto.child;
   o.parent = desto;
   o.parent.child = o;
-}
-
-function loadw(s, array, word_index) {
-  let resultVar = s.readByte();
-  s._log.debug(
-    `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
-      resultVar
-    )})`
-  );
-  s.storeVariable(resultVar, s.getWord((array + 2 * word_index) & 0xffff));
-}
-
-function loadb(s, array, byte_index) {
-  let resultVar = s.readByte();
-  s._log.debug(
-    `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
-      resultVar
-    )})`
-  );
-  s.storeVariable(resultVar, s.getByte((array + byte_index) & 0xffff));
 }
 
 function get_prop(s, obj, property) {
@@ -252,84 +245,6 @@ function get_next_prop(s, obj, property) {
   );
   let o = s.getObject(obj);
   s.storeVariable(resultVar, o.getNextProperty(property));
-}
-
-function add(s, a, b) {
-  s.storeVariable(s.readByte(), toI16(a) + toI16(b));
-}
-
-function sub(s, a, b) {
-  s.storeVariable(s.readByte(), toI16(a) - toI16(b));
-}
-
-function mul(s, a, b) {
-  s.storeVariable(s.readByte(), toI16(a) * toI16(b));
-}
-
-function div(s, a, b) {
-  s.storeVariable(s.readByte(), Math.floor(toI16(a) / toI16(b)));
-}
-
-function mod(s, a, b) {
-  s.storeVariable(s.readByte(), toI16(a) % toI16(b));
-}
-
-function call_1s(s, routine) {
-  let resultVar = s.readByte();
-  if (routine === 0) {
-    s.storeVariable(resultVar, 0);
-    return;
-  }
-  routine = s.unpackRoutineAddress(routine);
-  s._log.debug(
-    `${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`
-  );
-  s.callRoutine(routine, resultVar);
-}
-
-function call_1n(s, routine) {
-  if (routine === 0) {
-    return;
-  }
-  routine = s.unpackRoutineAddress(routine);
-  s._log.debug(`${hex(s.op_pc)} call_1n ${hex(routine)}`);
-  s.callRoutine(routine, null);
-}
-
-function call_2s(s, routine, arg1) {
-  let resultVar = s.readByte();
-  if (routine === 0) {
-    s.storeVariable(resultVar, 0);
-    return;
-  }
-  routine = s.unpackRoutineAddress(routine);
-  s._log.debug(
-    `${hex(s.op_pc)} call_2s ${hex(routine)} ${arg1} -> (${hex(resultVar)})`
-  );
-  s.callRoutine(routine, resultVar, arg1);
-}
-
-function call_2n(s, routine, arg1) {
-  if (routine === 0) {
-    return;
-  }
-  s._log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
-  routine = s.unpackRoutineAddress(routine);
-  s.callRoutine(routine, null, arg1);
-}
-
-function set_color(s, foreground, background) {
-  s._log.warn(
-    `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
-  );
-}
-
-function jz(s, a) {
-  let [offset, condfalse] = s.readBranchOffset();
-  s._log.debug(
-    `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
-  );
-  s.doBranch(a === 0, condfalse, offset);
 }
 
 function get_sibling(s, obj) {
@@ -387,6 +302,22 @@ function get_parent(s, obj) {
   s.storeVariable(resultVar, parent_objnum);
 }
 
+function remove_obj(s, obj) {
+  s._log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
+  let o = s.getObject(obj);
+  o.unlink();
+}
+
+function put_prop(s, obj, property, value) {
+  s._log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
+  let o = s.getObject(obj);
+  if (o === null) {
+    s._log.warn("put_prop called on null object");
+    return;
+  }
+  o.putProperty(property, value);
+}
+
 function get_prop_len(s, propDataAddr) {
   let resultVar = s.readByte();
   s._log.debug(
@@ -394,6 +325,41 @@ function get_prop_len(s, propDataAddr) {
   );
   let len = GameObject.getPropertyLength(s, propDataAddr);
   s.storeVariable(resultVar, len);
+}
+
+// stack manipulation
+function push(s, value) {
+  s.pushStack(value);
+}
+function pull(s, variable) {
+  s.storeVariable(variable, s.popStack());
+}
+
+// increment/decrement variables
+function dec_chk(s, variable, value) {
+  let [offset, condfalse] = s.readBranchOffset();
+  s._log.debug(
+    `${hex(s.op_pc)} dec_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  let new_val = toI16(s.loadVariable(variable)) - 1;
+  s.storeVariable(variable, toU16(new_val));
+  s._log.debug(`     ${new_val} <? ${value}`);
+  s.doBranch(new_val < toI16(value), condfalse, offset);
+}
+
+function inc_chk(s, variable, value) {
+  let [offset, condfalse] = s.readBranchOffset();
+  s._log.debug(
+    `${hex(s.op_pc)} inc_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
+      s.pc + offset - 2
+    )}`
+  );
+  let new_val = toI16(s.loadVariable(variable)) + 1;
+  s.storeVariable(variable, toU16(new_val));
+  s._log.debug(`     ${new_val} ?> ${value}`);
+  s.doBranch(new_val > toI16(value), condfalse, offset);
 }
 
 function inc(s, variable) {
@@ -404,28 +370,168 @@ function dec(s, variable) {
   s.storeVariable(variable, toU16(toI16(s.loadVariable(variable)) - 1));
 }
 
-function print_addr(s, stringAddr) {
-  s._log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
-  s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
+// load/store variables
+function store(s, variable, value) {
+  s._log.debug(`${hex(s.op_pc)} store (${hex(variable)}) ${hex(value)}`);
+  s.storeVariable(variable, value, true);
 }
 
-function remove_obj(s, obj) {
-  s._log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
-  let o = s.getObject(obj);
-  o.unlink();
+function storew(s, array, word_index, value) {
+  s._log.debug(
+    `${hex(s.op_pc)} storew ${hex(array)} ${hex(word_index)} ${hex(value)}`
+  );
+  s.setWord((array + 2 * word_index) & 0xffff, value);
 }
-function print_obj(s, obj) {
-  s._log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
-  let o = s.getObject(obj);
-  s._screen.print(s, `${o.name}`);
+function storeb(s, array, byte_index, value) {
+  s._log.debug(
+    `${hex(s.op_pc)} storeb ${hex(array)} ${hex(byte_index)} ${hex(value)}`
+  );
+  s.setByte((array + byte_index) & 0xffff, value);
+}
+
+function load(s, variable) {
+  let resultVar = s.readByte();
+  s._log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
+  s.storeVariable(resultVar, s.loadVariable(variable, false), false);
+}
+
+function loadw(s, array, word_index) {
+  let resultVar = s.readByte();
+  s._log.debug(
+    `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
+      resultVar
+    )})`
+  );
+  s.storeVariable(resultVar, s.getWord((array + 2 * word_index) & 0xffff));
+}
+
+function loadb(s, array, byte_index) {
+  let resultVar = s.readByte();
+  s._log.debug(
+    `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
+      resultVar
+    )})`
+  );
+  s.storeVariable(resultVar, s.getByte((array + byte_index) & 0xffff));
+}
+
+// opcodes dealing with function calls/returns
+function call_1s(s, routine) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  s._log.debug(
+    `${hex(s.op_pc)} call_1s ${hex(routine)} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar);
+}
+
+function call_1n(s, routine) {
+  if (routine === 0) {
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  s._log.debug(`${hex(s.op_pc)} call_1n ${hex(routine)}`);
+  s.callRoutine(routine, null);
+}
+
+function call_2s(s, routine, arg1) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  s._log.debug(
+    `${hex(s.op_pc)} call_2s ${hex(routine)} ${arg1} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, arg1);
+}
+
+function call_2n(s, routine, arg1) {
+  if (routine === 0) {
+    return;
+  }
+  s._log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
+  routine = s.unpackRoutineAddress(routine);
+  s.callRoutine(routine, null, arg1);
+}
+
+function call_vs2(s, routine, ...args) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    s.storeVariable(resultVar, 0);
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  s._log.debug(
+    `${hex(s.op_pc)} call_vs2 ${hex(routine)} ${args} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, ...args);
+}
+
+function call(s, routine, ...args) {
+  let resultVar = s.readByte();
+  if (routine === 0) {
+    return;
+  }
+  routine = s.unpackRoutineAddress(routine);
+  s._log.debug(
+    `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
+  );
+  s.callRoutine(routine, resultVar, ...args);
+}
+
+function call_vn2(s, routine, ...args) {
+  if (routine === 0) {
+    return;
+  }
+  s._log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
+  routine = s.unpackRoutineAddress(routine);
+  s.callRoutine(routine, null, ...args);
 }
 
 function ret(s, value) {
   s.returnFromRoutine(value);
 }
 
-function jump(s, addr) {
-  s.pc = s.pc + toI16(addr) - 2;
+function rtrue(s) {
+  s.returnFromRoutine(1);
+}
+
+function rfalse(s) {
+  s.returnFromRoutine(0);
+}
+
+function ret_popped(s) {
+  s.returnFromRoutine(s.popStack());
+}
+
+function print_ret(s) {
+  s._log.debug(`${hex(s.op_pc)} print_ret`);
+  s._screen.print(s, zstringToAscii(s, s.readZString(), true));
+  s.returnFromRoutine(1);
+}
+
+// screen-related opcodes
+function set_color(s, foreground, background) {
+  s._log.warn(
+    `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
+  );
+}
+
+function print_addr(s, stringAddr) {
+  s._log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
+  s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
+}
+
+function print_obj(s, obj) {
+  s._log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
+  let o = s.getObject(obj);
+  s._screen.print(s, `${o.name}`);
 }
 
 function print_paddr(s, packed_addr) {
@@ -435,32 +541,83 @@ function print_paddr(s, packed_addr) {
   );
 }
 
-function load(s, variable) {
-  let resultVar = s.readByte();
-  s._log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
-  s.storeVariable(resultVar, s.loadVariable(variable, false), false);
+function new_line(s) {
+  s._screen.print(s, "\n");
 }
 
-function not(s, value) {
-  let resultVar = s.readByte();
-  value = value ^ 0xffff;
-  s.storeVariable(resultVar, value);
+function show_status(s) {
+  if (s._version >= 4) {
+    return;
+  }
+  let location = s.getWord(s._global_vars + 0);
+  let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
+  let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
+  // XXX(toshok) more here.
 }
 
-function rtrue(s) {
-  s.returnFromRoutine(1);
-}
-function rfalse(s) {
-  s.returnFromRoutine(0);
-}
 function print(s) {
   s._screen.print(s, zstringToAscii(s, s.readZString(), true));
 }
 
-function print_ret(s) {
-  s._log.debug(`${hex(s.op_pc)} print_ret`);
-  s._screen.print(s, zstringToAscii(s, s.readZString(), true));
-  s.returnFromRoutine(1);
+function split_window(s, lines) {
+  s._screen.splitWindow(s, lines);
+}
+function set_window(s, window) {
+  s._screen.setOutputWindow(s, window);
+}
+
+function erase_window(s, window) {
+  s._screen.clearWindow(s, window);
+}
+
+function erase_line(s, value) {
+  s._screen.clearLine(s, value);
+}
+
+function set_cursor(s, line, column, window) {
+  if (s._version >= 6) {
+    if (line === -1) {
+      s._screen.hideCursor(s);
+      return;
+    }
+    if (line === -2) {
+      s._screen.showCursor(s);
+      return;
+    }
+  }
+  if (s._version < 6) {
+    window = s._screen.getOutputWindow(s);
+  }
+
+  s._screen.setCursorPosition(s, line, column, window);
+}
+
+function get_cursor(s, array) {
+  s._log.warn(`get_cursor ${array} -- not implemented`);
+}
+
+function set_text_style(s, style) {
+  s._screen.setTextStyle(s, style);
+}
+
+function buffer_mode(s, flag) {
+  s._screen.setBufferMode(s, flag);
+}
+
+function output_stream(s, number, table, width) {
+  let streamNumber = toI16(number);
+  if (streamNumber === 0) {
+    // why emit this opcode at all?
+    return;
+  }
+  if (streamNumber > 0) {
+    s._screen.enableOutputStream(s, streamNumber, table, width);
+    return;
+  }
+  s._screen.disableOutputStream(s, -streamNumber, table, width);
+}
+function input_stream(s, number) {
+  s._screen.selectInputStream(s, toI16(number));
 }
 
 function save(s) {
@@ -489,57 +646,6 @@ function quit(s) {
   s._quit = true;
 }
 
-function ret_popped(s) {
-  s.returnFromRoutine(s.popStack());
-}
-
-function new_line(s) {
-  s._screen.print(s, "\n");
-}
-
-function show_status(s) {
-  if (s._version >= 4) {
-    return;
-  }
-  let location = s.getWord(s._global_vars + 0);
-  let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
-  let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
-  // XXX(toshok) more here.
-}
-
-function call(s, routine, ...args) {
-  let resultVar = s.readByte();
-  if (routine === 0) {
-    return;
-  }
-  routine = s.unpackRoutineAddress(routine);
-  s._log.debug(
-    `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
-  );
-  s.callRoutine(routine, resultVar, ...args);
-}
-function storew(s, array, word_index, value) {
-  s._log.debug(
-    `${hex(s.op_pc)} storew ${hex(array)} ${hex(word_index)} ${hex(value)}`
-  );
-  s.setWord((array + 2 * word_index) & 0xffff, value);
-}
-function storeb(s, array, byte_index, value) {
-  s._log.debug(
-    `${hex(s.op_pc)} storeb ${hex(array)} ${hex(byte_index)} ${hex(value)}`
-  );
-  s.setByte((array + byte_index) & 0xffff, value);
-}
-function put_prop(s, obj, property, value) {
-  s._log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
-  let o = s.getObject(obj);
-  if (o === null) {
-    s._log.warn("put_prop called on null object");
-    return;
-  }
-  o.putProperty(property, value);
-}
-
 function sread(s, textBuffer, parseBuffer, time, routine) {
   let max_input = s.getByte(textBuffer) + 1;
   s._log.debug(
@@ -566,77 +672,7 @@ function random(s, range) {
     s.storeVariable(resultVar, rv);
   }
 }
-function push(s, value) {
-  s.pushStack(value);
-}
-function pull(s, variable) {
-  s.storeVariable(variable, s.popStack());
-}
-function split_window(s, lines) {
-  s._screen.splitWindow(s, lines);
-}
-function set_window(s, window) {
-  s._screen.setOutputWindow(s, window);
-}
-function call_vs2(s, routine, ...args) {
-  let resultVar = s.readByte();
-  if (routine === 0) {
-    s.storeVariable(resultVar, 0);
-    return;
-  }
-  routine = s.unpackRoutineAddress(routine);
-  s._log.debug(
-    `${hex(s.op_pc)} call_vs2 ${hex(routine)} ${args} -> (${hex(resultVar)})`
-  );
-  s.callRoutine(routine, resultVar, ...args);
-}
-function erase_window(s, window) {
-  s._screen.clearWindow(s, window);
-}
-function erase_line(s, value) {
-  s._screen.clearLine(s, value);
-}
-function set_cursor(s, line, column, window) {
-  if (s._version >= 6) {
-    if (line === -1) {
-      s._screen.hideCursor(s);
-      return;
-    }
-    if (line === -2) {
-      s._screen.showCursor(s);
-      return;
-    }
-  }
-  if (s._version < 6) {
-    window = s._screen.getOutputWindow(s);
-  }
 
-  s._screen.setCursorPosition(s, line, column, window);
-}
-function get_cursor(s, array) {
-  s._log.warn(`get_cursor ${array} -- not implemented`);
-}
-function set_text_style(s, style) {
-  s._screen.setTextStyle(s, style);
-}
-function buffer_mode(s, flag) {
-  s._screen.setBufferMode(s, flag);
-}
-function output_stream(s, number, table, width) {
-  let streamNumber = toI16(number);
-  if (streamNumber === 0) {
-    // why emit this opcode at all?
-    return;
-  }
-  if (streamNumber > 0) {
-    s._screen.enableOutputStream(s, streamNumber, table, width);
-    return;
-  }
-  s._screen.disableOutputStream(s, -streamNumber, table, width);
-}
-function input_stream(s, number) {
-  s._screen.selectInputStream(s, toI16(number));
-}
 function sound_effect(s, number, effect, volume, routine) {
   s._log.warn(`sound_effect ${number} -- not implemented`);
 }
@@ -672,14 +708,7 @@ function scan_table(s, x, table, len, form = 0x82) {
   s.storeVariable(resultVar, 0);
   // don't branch
 }
-function call_vn2(s, routine, ...args) {
-  if (routine === 0) {
-    return;
-  }
-  s._log.debug(`${hex(s.op_pc)} call_2n ${hex(routine)} ${arg1}`);
-  routine = s.unpackRoutineAddress(routine);
-  s.callRoutine(routine, null, ...args);
-}
+
 function tokenise(s, text, tokenBuffer, dict = 0, flag = 0) {
   s.tokeniseLine(text, tokenBuffer, dict, flag != 0);
 }
@@ -688,11 +717,6 @@ function print_table(s, zscii_text, width, height, skip) {
   if (width) s._log.debug(`width = ${width}`);
   if (height) s._log.debug(`height = ${height}`);
   if (skip) log_debug(`skip = ${skip}`);
-}
-function check_arg_count(s, argNumber) {
-  let [offset, condfalse] = s.readBranchOffset();
-
-  s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
 }
 
 export const op2 = [
@@ -772,10 +796,11 @@ export const op0 = [
 
   opcodeImpl(save),
   opcodeImpl(restore),
-
   unimplementedOpcode("restart"),
+
   opcodeImpl(ret_popped),
   unimplementedOpcode("pop"),
+
   opcodeImpl(quit),
   opcodeImpl(new_line),
   opcodeImpl(show_status),
