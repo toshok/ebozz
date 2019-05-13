@@ -333,6 +333,11 @@ function get_prop_len(s, propDataAddr) {
 function push(s, value) {
   s.pushStack(value);
 }
+
+function pop(s) {
+  s.popStack();
+}
+
 function pull(s, variable) {
   s.storeVariable(variable, s.popStack());
 }
@@ -478,6 +483,7 @@ function call_vs2(s, routine, ...args) {
 function call(s, routine, ...args) {
   let resultVar = s.readByte();
   if (routine === 0) {
+    s.storeVariable(resultVar, 0);
     return;
   }
   routine = s.unpackRoutineAddress(routine);
@@ -714,6 +720,7 @@ function scan_table(s, x, table, len, form = 0x82) {
 function tokenise(s, text, tokenBuffer, dict = 0, flag = 0) {
   s.tokeniseLine(text, tokenBuffer, dict, flag != 0);
 }
+
 function print_table(s, zscii_text, width, height, skip) {
   s._log.debug("print_table");
   if (width) {
@@ -725,6 +732,12 @@ function print_table(s, zscii_text, width, height, skip) {
   if (skip) {
     log_debug(`skip = ${skip}`);
   }
+}
+
+function piracy(s) {
+  let [offset, condfalse] = s.readBranchOffset();
+  // we are gullible and assume everything is okay.
+  s.doBranch(true, condfalse, offset);
 }
 
 export const op2 = [
@@ -807,14 +820,15 @@ export const op0 = [
   unimplementedOpcode("restart"),
 
   opcodeImpl(ret_popped),
-  unimplementedOpcode("pop"),
+  opcodeImpl(pop),
 
   opcodeImpl(quit),
   opcodeImpl(new_line),
   opcodeImpl(show_status),
+  unimplementedOpcode("catch"),
   unimplementedOpcode("verify"),
-  unimplementedOpcode("extended"),
-  unimplementedOpcode("piracy")
+  unimplementedOpcode("extended"), // not actually an instruction
+  opcodeImpl(piracy)
 ];
 
 export const opv = [

@@ -583,10 +583,6 @@ export default class Game {
   }
 
   callRoutine(addr, rv_location, ...args) {
-    if (addr === 0) {
-      this.storeVariable(rv_location, 0);
-      return;
-    }
     // initialize locals
     let num_locals = this.getByte(addr++);
     let locals = Array(num_locals);
