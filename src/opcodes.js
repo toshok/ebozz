@@ -350,8 +350,8 @@ function dec_chk(s, variable, value) {
       s.pc + offset - 2
     )}`
   );
-  let new_val = toI16(s.loadVariable(variable)) - 1;
-  s.storeVariable(variable, toU16(new_val));
+  let new_val = toI16(s.loadVariable(variable, true)) - 1;
+  s.storeVariable(variable, toU16(new_val), true);
   s._log.debug(`     ${new_val} <? ${value}`);
   s.doBranch(new_val < toI16(value), condfalse, offset);
 }
@@ -363,18 +363,26 @@ function inc_chk(s, variable, value) {
       s.pc + offset - 2
     )}`
   );
-  let new_val = toI16(s.loadVariable(variable)) + 1;
-  s.storeVariable(variable, toU16(new_val));
+  let new_val = toI16(s.loadVariable(variable, true)) + 1;
+  s.storeVariable(variable, toU16(new_val), true);
   s._log.debug(`     ${new_val} ?> ${value}`);
   s.doBranch(new_val > toI16(value), condfalse, offset);
 }
 
 function inc(s, variable) {
-  s.storeVariable(variable, toU16(toI16(s.loadVariable(variable)) + 1));
+  s.storeVariable(
+    variable,
+    toU16(toI16(s.loadVariable(variable, true)) + 1),
+    true
+  );
 }
 
 function dec(s, variable) {
-  s.storeVariable(variable, toU16(toI16(s.loadVariable(variable)) - 1));
+  s.storeVariable(
+    variable,
+    toU16(toI16(s.loadVariable(variable, true)) - 1),
+    true
+  );
 }
 
 // load/store variables
@@ -399,7 +407,7 @@ function storeb(s, array, byte_index, value) {
 function load(s, variable) {
   let resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
-  s.storeVariable(resultVar, s.loadVariable(variable, false), false);
+  s.storeVariable(resultVar, s.loadVariable(variable, true), true);
 }
 
 function loadw(s, array, word_index) {
