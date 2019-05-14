@@ -150,7 +150,6 @@ function not(s, value) {
 
 // object/attribute related opcodes
 function test_attr(s, obj, attribute) {
-  //fs.writeSync(log_fp, `+  ${hex(obj)} / ${hex(attribute)}\n`);
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} test_attr ${hex(obj)} ${hex(
@@ -225,7 +224,6 @@ function get_prop(s, obj, property) {
 }
 
 function get_prop_addr(s, obj, property) {
-  //fs.writeSync(log_fp, ` get_prop_addr ${hex(obj)} ${hex(property)}`);
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop_addr ${hex(obj)} ${hex(property)} -> (${hex(
@@ -269,7 +267,6 @@ function get_sibling(s, obj) {
     s._log.warn("object is 0 in get_sibling");
     s.storeVariable(resultVar, 0);
   }
-  //fs.writeSync(log_fp, `+  sibling = ${sibling ? hex(sibling.objnum) : '0'}\n`);
 
   s.doBranch(sibling !== null, condfalse, offset);
 }
@@ -663,12 +660,24 @@ function quit(s) {
 }
 
 function sread(s, textBuffer, parseBuffer, time, routine) {
+  let resultVar;
+
+  if (s._version >= 5) {
+    resultVar = s.readByte();
+  }
+
   let max_input = s.getByte(textBuffer) + 1;
   s._log.debug(
     `sread max_input=${max_input}, text=${textBuffer}, parse=${parseBuffer}, time=${time}, routine=${routine}`
   );
   // XXX(toshok) we need to handle the initial contents of the buffer (only Shogun and Zork Zero use it?)
-  throw new SuspendForUserInput({ textBuffer, parseBuffer, time, routine });
+  throw new SuspendForUserInput({
+    textBuffer,
+    parseBuffer,
+    time,
+    routine,
+    resultVar
+  });
 }
 function print_char(s, ...chars) {
   s._log.debug(`print_char(${chars})`);
@@ -738,7 +747,7 @@ function print_table(s, zscii_text, width, height, skip) {
     s._log.debug(`height = ${height}`);
   }
   if (skip) {
-    log_debug(`skip = ${skip}`);
+    s._log.debug(`skip = ${skip}`);
   }
 }
 
@@ -811,7 +820,6 @@ export const op1 = [
 
   opcodeImpl(print_paddr),
   opcodeImpl(load),
-  opcodeImpl(not),
   opcodeImpl(call_1n)
 ];
 
@@ -865,10 +873,8 @@ export const opv = [
   opcodeImpl(sound_effect),
   opcodeImpl(read_char),
   opcodeImpl(scan_table),
-
-  unimplementedOpcode("not"),
+  opcodeImpl(not),
   unimplementedOpcode("call_vn"),
-
   opcodeImpl(call_vn2),
   opcodeImpl(tokenise),
 

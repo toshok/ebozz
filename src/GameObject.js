@@ -290,6 +290,9 @@ export default class GameObject {
   }
 
   static getPropertyLength(state, dataAddr) {
+    if (dataAddr === 0) {
+      return 0;
+    }
     let entry = GameObject.entryFromDataPtr(dataAddr);
 
     return GameObject._propDataLen(state, entry);

@@ -182,7 +182,7 @@ export default class Game {
 
       input = input.toLowerCase();
 
-      let { textBuffer, parseBuffer } = input_state;
+      let { textBuffer, parseBuffer, resultVar } = input_state;
 
       let max_input = this.getByte(textBuffer);
       if (this._version <= 4) {
@@ -210,7 +210,11 @@ export default class Game {
       this.tokeniseLine(textBuffer, parseBuffer, 0, false);
 
       if (this._version >= 5) {
-        this._log.error("sread doesn't store the last key (return) anywhere");
+        // >= v5 stores the terminating input key
+
+        // XXX(toshok) this is almost certainly wrong, but until we support input that doesn't require the enter
+        // key to be hit, feels like an okay compromise?
+        this.storeVariable(resultVar, 0x0d);
       }
 
       this.executeLoop();
@@ -258,7 +262,7 @@ export default class Game {
     let reallyVariable = false;
     let form;
 
-    this._log.debug("opbyte = " + opcode);
+    this._log.debug(`opbyte = ${opcode}`);
 
     if ((opcode & 0xc0) === 0xc0) {
       form = INSTRUCTION_FORM_VARIABLE;
@@ -291,9 +295,9 @@ export default class Game {
       }
 
       opcode = opcode & 0x0f;
-    }
-    // XXX opcode == 190 and version >= 5
-    else {
+    } else if (opcode === 190 && this._version >= 5) {
+      throw new Error("extended opcodes not implemented");
+    } else {
       form = INSTRUCTION_FORM_LONG;
 
       operandTypes.push(
@@ -323,26 +327,26 @@ export default class Game {
       }
     }
 
-    let impl;
+    let op;
     try {
       if (reallyVariable) {
-        impl = opv[opcode].impl;
+        op = opv[opcode];
       } else {
         switch (operands.length) {
           case 0:
-            impl = op0[opcode].impl;
+            op = op0[opcode];
             break;
           case 1:
-            impl = op1[opcode].impl;
+            op = op1[opcode];
             break;
           case 2:
-            impl = op2[opcode].impl;
+            op = op2[opcode];
             break;
           case 3:
-            impl = op3[opcode].impl;
+            op = op3[opcode];
             break;
           case 4:
-            impl = op4[opcode].impl;
+            op = op4[opcode];
             break;
           default:
             throw new Error("unhandled number of operands");
@@ -355,7 +359,8 @@ export default class Game {
       );
       throw e;
     }
-    impl(this, ...operands);
+    this._log.debug(`op = ${op.mnemonic}`);
+    op.impl(this, ...operands);
   }
 
   unpackRoutineAddress(addr) {
@@ -577,6 +582,9 @@ export default class Game {
         this.returnFromRoutine(1);
       } else {
         this._pc = this._pc + offset - 2;
+        if (this._pc < 0 || this._pc > this._mem.length) {
+          throw new Error("branch out of bounds");
+        }
         this._log.debug(`     taking branch to ${this._pc}!`);
       }
     }
@@ -695,10 +703,19 @@ export default class Game {
     let zchars = [];
 
     for (let i = 0; i < text.length; i++) {
+      /*
       if (text[i] < "a" || text[i] > "z") {
         throw new Error("encodeToken is too dumb");
       }
       zchars.push(text.charCodeAt(i) - "a".charCodeAt(0) + 6);
+      */
+      let charCode = text.charCodeAt(i);
+      if (text[i] >= "a" && text[i] <= "z") {
+        charCode = charCode - "a".charCodeAt(0) + 6;
+      } else {
+        throw new Error("encodeToken is dumb");
+      }
+      zchars.push(charCode);
     }
     while (zchars.length < 6) {
       zchars.push(padding);
@@ -801,7 +818,7 @@ export default class Game {
       addr1++;
 
       // fetch next character
-      if (this._version >= 5 && addr === textBuffer + 2 + length) {
+      if (this._version >= 5 && addr1 === textBuffer + 2 + length) {
         c = 0;
       } else {
         c = this.getByte(addr1);
@@ -834,7 +851,14 @@ export default class Game {
       }
 
       if (sep_count != 0) {
-        this.tokeniseText(textBuffer, 1, addr1 - text, parseBuffer, dict, flag);
+        this.tokeniseText(
+          textBuffer,
+          1,
+          addr1 - textBuffer,
+          parseBuffer,
+          dict,
+          flag
+        );
       }
     } while (c != 0);
   }
