@@ -530,10 +530,12 @@ function print_ret(s) {
 }
 
 // screen-related opcodes
-function set_color(s, foreground, background) {
-  s._log.warn(
-    `${hex(s.op_pc)} set_color ${foreground} ${background} -- not implemented`
-  );
+function set_color(s, foreground, background, window) {
+  if (s._version <= 5) {
+    window = 0;
+  }
+  // XXX(toshok) we need to flush whatever text is buffered before changing the colors
+  s._screen.setTextColors(s, window, foreground, background);
 }
 
 function print_addr(s, stringAddr) {

@@ -9,6 +9,20 @@ const TextStyles = {
   FixedPitch: 8
 };
 
+const Colors = {
+  Current: 0,
+  Default: 1,
+  Black: 2,
+  Red: 3,
+  Green: 4,
+  Yellow: 5,
+  Blue: 6,
+  Magenta: 7,
+  Cyan: 8,
+  White: 9,
+  Gray: 10
+};
+
 const BufferModes = {
   NotBuffered: 0,
   Buffered: 1
@@ -20,6 +34,13 @@ export default class StdioScreen {
     this.textStyle = TextStyles.Roman;
     this.outputWindowId = 0;
     this.bufferMode = BufferModes.Buffered;
+
+    this.colors = {
+      0: {
+        foreground: Colors.Default,
+        background: Colors.Default
+      }
+    };
   }
 
   getInputFromUser(game, input_state) {
@@ -27,10 +48,7 @@ export default class StdioScreen {
     game.continueAfterUserInput(input_state, input);
   }
 
-  print(game, str) {
-    if (this.outputWindowId !== 0) {
-      return;
-    }
+  applyStyles(str) {
     if (this.textStyle & TextStyles.ReverseVideo) {
       str = chalk.inverse(str);
     }
@@ -40,6 +58,62 @@ export default class StdioScreen {
     if (this.textStyle & TextStyles.Italic) {
       str = chalk.italic(str);
     }
+    return str;
+  }
+
+  applyColors(str) {
+    // background first
+    const getChalkAccessor = (color, bg) => {
+      const bgOrNot = (name, bg) => (bg ? `bg${name}` : name.toLowerCase());
+      switch (color) {
+        case Colors.Black:
+          return bgOrNot("Black", bg);
+        case Colors.Red:
+          return bgOrNot("Red", bg);
+        case Colors.Green:
+          return bgOrNot("Green", bg);
+        case Colors.Yellow:
+          return bgOrNot("Yellow", bg);
+        case Colors.Blue:
+          return bgOrNot("Blue", bg);
+        case Colors.Magenta:
+          return bgOrNot("Magenta", bg);
+        case Colors.Cyan:
+          return bgOrNot("Cyan", bg);
+        case Colors.White:
+          return bgOrNot("White", bg);
+        case Colors.Gray:
+          // because why be consistent?  ugh, chalk.
+          return bg ? "bgBrightBlack" : "gray";
+        default:
+          throw new Error("unrecognized color");
+      }
+    };
+
+    if (this.colors[this.outputWindowId].background !== Colors.Default) {
+      let accessor = getChalkAccessor(
+        this.colors[this.outputWindowId].background,
+        true
+      );
+      str = chalk[accessor](str);
+    }
+    if (this.colors[this.outputWindowId].foreground !== Colors.Default) {
+      let accessor = getChalkAccessor(
+        this.colors[this.outputWindowId].foreground,
+        false
+      );
+      str = chalk[accessor](str);
+    }
+
+    return str;
+  }
+
+  print(game, str) {
+    if (this.outputWindowId !== 0) {
+      return;
+    }
+    str = this.applyStyles(str);
+    str = this.applyColors(str);
     process.stdout.write(str);
   }
 
@@ -83,6 +157,17 @@ export default class StdioScreen {
 
   setTextStyle(game, style) {
     this.textStyle = style;
+  }
+
+  setTextColors(game, windowId, foreground, background) {
+    let newColors = { foreground, background };
+    if (newColors.foreground === Colors.Current) {
+      newColors.foreground = this.colors[windowId].foreground;
+    }
+    if (newColors.background === Colors.Current) {
+      newColors.background = this.colors[windowId].background;
+    }
+    this.colors[windowId] = newColors;
   }
 
   enableOutputStream(game, streamId, table, width) {

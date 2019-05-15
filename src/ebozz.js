@@ -49,6 +49,12 @@ export default class Game {
 
     // turn off split screen
 
+    // tell the game some things about our capabilities
+    if (this._version >= 4) {
+      // we support all the things.  XXX(toshok) this should depend on the screen?
+      this.setByte(0x01, 0xff);
+    }
+
     // get the word separators out of the dictionary here so we don't have to do it
     // every time we tokenise below.
   }
@@ -712,8 +718,6 @@ export default class Game {
       let charCode = text.charCodeAt(i);
       if (text[i] >= "a" && text[i] <= "z") {
         charCode = charCode - "a".charCodeAt(0) + 6;
-      } else {
-        throw new Error("encodeToken is dumb");
       }
       zchars.push(charCode);
     }
