@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import Log from "./log";
-import Game from "./ebozz";
+import Log from "../log";
+import Game from "../ebozz";
 import BlessedScreen from "./blessed-screen";
 import StdioScreen from "./stdio-screen";
-import { dumpHeader, dumpDictionary, dumpObjectTable } from "./debug-helpers";
+import { dumpHeader, dumpDictionary, dumpObjectTable } from "../debug-helpers";
 
 import * as fs from "fs";
 import nopt from "nopt";

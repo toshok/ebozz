@@ -2,8 +2,8 @@
 import Bot from "slackbots";
 import * as fs from "fs";
 import * as path from "path";
-import Game from "./ebozz";
-import Log from "./log";
+import Game from "../ebozz";
+import Log from "../log";
 
 const BOT_NAME = "Ebozz";
 const CHANNEL_NAME = "ebozz-debug";
