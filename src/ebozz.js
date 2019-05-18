@@ -268,7 +268,8 @@ export default class Game {
     let reallyVariable = false;
     let form;
 
-    this._log.debug(`opbyte = ${opcode}`);
+    this._log.debug(`${op_pc.toString(16)}: opbyte = ${opcode}`);
+    // console.error(`[DEBUG] ${op_pc.toString(16)}: opbyte = ${opcode}`);
 
     if ((opcode & 0xc0) === 0xc0) {
       form = INSTRUCTION_FORM_VARIABLE;
@@ -366,6 +367,11 @@ export default class Game {
       throw e;
     }
     this._log.debug(`op = ${op.mnemonic}`);
+    /*
+    if (this._callstack.length > 0) {
+      console.log(this._callstack[this._callstack.length - 1].locals);
+    }
+    */
     op.impl(this, ...operands);
   }
 
@@ -458,6 +464,7 @@ export default class Game {
           } locals`
         );
       }
+      // console.log(`variable ${v - 1} = ${value}`);
       cur_frame.locals[v - 1] = value;
     } else {
       // global
@@ -617,12 +624,16 @@ export default class Game {
     }
 
     let new_frame = {
+      method_pc: addr,
       return_pc: this._pc,
       return_value_location: rv_location,
       locals,
       arg_count: args.length
     };
 
+    if (addr === 0x676f) {
+      console.log(new_frame);
+    }
     this._callstack.push(new_frame);
     this._pc = addr;
   }

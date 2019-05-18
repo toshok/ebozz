@@ -92,6 +92,12 @@ function jz(s, a) {
   s._log.debug(
     `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
   );
+  /*
+  if (a === 2) {
+    console.log(s._callstack[s._callstack.length - 1]);
+  }
+  console.log(` jz arg = ${a}`);
+  */
   s.doBranch(a === 0, condfalse, offset);
 }
 
@@ -759,6 +765,20 @@ function piracy(s) {
   s.doBranch(true, condfalse, offset);
 }
 
+function zCatch(s) {
+  let resultVar = s.readByte();
+  s.storeVariable(resultVar, s._callstack.length - 1);
+}
+
+function zThrow(s, returnVal, frameNum) {
+  if (frameNum >= s._callstack.length) {
+    throw new Error("bad frame number");
+  }
+  s._callstack = s._callstack.slice(0, frameNum + 1);
+
+  s.returnFromRoutine(returnVal);
+}
+
 export const op2 = [
   nopcode(),
   opcodeImpl(je),
@@ -794,7 +814,7 @@ export const op2 = [
   opcodeImpl(call_2n),
 
   opcodeImpl(set_color),
-  unimplementedOpcode("throw"),
+  opcodeImpl(zThrow),
   illegalOpcode(),
   illegalOpcode(),
   illegalOpcode()
@@ -843,7 +863,7 @@ export const op0 = [
   opcodeImpl(quit),
   opcodeImpl(new_line),
   opcodeImpl(show_status),
-  unimplementedOpcode("catch"),
+  opcodeImpl(zCatch),
   unimplementedOpcode("verify"),
   unimplementedOpcode("extended"), // not actually an instruction
   opcodeImpl(piracy)
