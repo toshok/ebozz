@@ -24,7 +24,7 @@ export default class Log {
     }
   }
   info(msg) {
-    console.log(this._debug(`[INFO] ${msg}`));
+    console.log(this._info(`[INFO] ${msg}`));
   }
   warn(msg) {
     console.log(this._warn(`[WARN] ${msg}`));
