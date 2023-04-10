@@ -1,13 +1,13 @@
-import type Game from "./ebozz";
-import type { ZSCII } from "./types";
-import type GameObject from "./GameObject";
-import zstringToAscii from "./zstringToAscii";
+import type Game from "./ebozz.js";
+import type { ZSCII } from "./types.js";
+import type GameObject from "./GameObject.js";
+import zstringToAscii from "./zstringToAscii.js";
 
 export function hex(v: number): string {
   return v !== undefined ? v.toString(16) : "";
 }
 
-export function dumpHeader(s) {
+export function dumpHeader(s: Game) {
   console.log("header:");
   console.log(`Z-code version:           ${s.getByte(0)}`);
   console.log(`Start PC:                 ${hex(s.getWord(0x06))}`);
@@ -51,7 +51,7 @@ export function dumpDictionary(s: Game) {
   p += 2;
 
   for (let i = 0; i < num_entries; i++) {
-    let entry_text = zstringToAscii(this, s.getZString(p), false);
+    let entry_text = zstringToAscii(s, s.getZString(p), false);
     console.log(
       ` [${i}] ${entry_text} ${hex(s.getWord(p))} ${hex(s.getWord(p + 2))}`
     );
@@ -61,7 +61,7 @@ export function dumpDictionary(s: Game) {
   console.log();
 }
 
-export function dumpParsebuffer(s, parsebuffer) {
+export function dumpParsebuffer(s: Game, parsebuffer: number) {
   let max = s.getByte(parsebuffer);
   parsebuffer++;
   let count = s.getByte(parsebuffer);

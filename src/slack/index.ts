@@ -2,15 +2,37 @@
 import Bot from "slackbots";
 import * as fs from "fs";
 import * as path from "path";
-import Game from "../ebozz";
-import Log from "../log";
-import { InputState, SnapshotData } from "../types";
-import { ScreenBase } from "../Screen";
+
+import Game from "../ebozz.js";
+import Log from "../log.js";
+import { InputState, SnapshotData } from "../types.js";
+import { ScreenBase } from "../Screen.js";
+
+type SlackUser = {
+  id: string;
+  real_name: string;
+  profile: {
+    bot_id: string;
+  };
+};
+
+type SlackChannel = {
+  id: string;
+  name: string;
+};
+
+type SlackMessage = {
+  type: string;
+  subtype: string;
+  bot_id: string;
+  channel: string;
+  text: string;
+};
 
 const BOT_NAME = "Ebozz";
 const CHANNEL_NAME = "ebozz-debug";
 
-const GAMES = {
+const GAMES: Record<string, { name: string; path: string }> = {
   zork1: {
     name: "Zork I: The Great Underground Empire",
     path: "./tests/zork1.dat",
@@ -172,7 +194,7 @@ function loadNotSupported(): SnapshotData {
 
 class EbozzBot {
   private bot: Bot;
-  private user: any; // XXX
+  private user: SlackUser; // XXX
   private storage: BotStorage;
 
   constructor(token: string) {
@@ -192,10 +214,10 @@ class EbozzBot {
     this.bot.on("start", () => {
       this.debugChannel("starting up");
       this.user = this.bot.users.filter(
-        (user) => user.real_name === BOT_NAME
+        (user: SlackUser) => user.real_name === BOT_NAME
       )[0];
 
-      this.bot.on("message", (message) => {
+      this.bot.on("message", (message: SlackMessage) => {
         if (
           !this.isChatMessage(message) ||
           !this.isChannelConversation(message) ||
@@ -206,195 +228,201 @@ class EbozzBot {
 
         let channelId = message.channel;
         this.bot.channels = undefined; // XXX ugh?
-        this.bot.getChannels().then(({ channels }) => {
-          try {
-            let channelName = channels.find((c) => c.id === channelId).name;
-            let channelState = this.storage.stateForChannel(channelId);
+        this.bot
+          .getChannels()
+          .then(({ channels }: { channels: Array<SlackChannel> }) => {
+            try {
+              let channel = channels.find((c) => c.id === channelId);
+              if (!channel) {
+                throw new Error(`channel ${channelId} not found`);
+              }
+              let channelName = channel.name;
+              let channelState = this.storage.stateForChannel(channelId);
 
-            if (this.isAtMe(message)) {
-              // meta commands:
-              //  (list) games
-              //  play <gameid>
-              //  restart
-              //  quit
+              if (this.isAtMe(message)) {
+                // meta commands:
+                //  (list) games
+                //  play <gameid>
+                //  restart
+                //  quit
 
-              let atMe = `<@${this.user.id}>`;
-              let command = message.text.slice(atMe.length).trim();
+                let atMe = `<@${this.user.id}>`;
+                let command = message.text.slice(atMe.length).trim();
 
-              if (command == "games") {
-                // console.log(message);
-                let response = "Games available:\n";
-                for (let id of Object.keys(GAMES).sort()) {
-                  let g = GAMES[id];
-                  response += `*${id}*: _${g.name}_\n`;
+                if (command == "games") {
+                  // console.log(message);
+                  let response = "Games available:\n";
+                  for (let id of Object.keys(GAMES).sort()) {
+                    let g = GAMES[id];
+                    response += `*${id}*: _${g.name}_\n`;
+                  }
+
+                  this.bot.postMessageToChannel(channelName, response);
+                  return;
                 }
 
+                if (command.startsWith("play ")) {
+                  let gameId = command.slice("play ".length).trim();
+                  if (!GAMES[gameId]) {
+                    this.bot.postMessageToChannel(
+                      channelName,
+                      `unknown game ${gameId}`
+                    );
+                    return;
+                  }
+
+                  this.debugChannel(
+                    `starting game ${gameId} in channel ${channelName}`
+                  );
+
+                  let log = new Log(false);
+                  let game = new Game(
+                    fs.readFileSync(GAMES[gameId].path),
+                    log,
+                    new BotScreen(log, this, this.storage, channelId, gameId),
+                    {
+                      saveSnapshot: saveNotSupported,
+                      loadSnapshot: loadNotSupported,
+                    }
+                  );
+
+                  game.execute();
+
+                  return;
+                }
+
+                if (command == "restart") {
+                  if (!channelState) {
+                    this.bot.postMessage(
+                      channelName,
+                      "There isn't a game running in this channel."
+                    );
+                    return;
+                  }
+
+                  let { gameId } = channelState;
+                  this.debugChannel(
+                    `restarting game ${gameId} in channel ${channelName}`
+                  );
+
+                  let log = new Log(false);
+                  let game = new Game(
+                    fs.readFileSync(GAMES[gameId].path),
+                    log,
+                    new BotScreen(log, this, this.storage, channelId, gameId),
+                    {
+                      saveSnapshot: saveNotSupported,
+                      loadSnapshot: loadNotSupported,
+                    }
+                  );
+
+                  game.execute();
+
+                  return;
+                }
+
+                if (command == "quit") {
+                  if (!channelState) {
+                    this.bot.postMessage(
+                      channelName,
+                      "There isn't a game running in this channel."
+                    );
+                    return;
+                  }
+
+                  let { gameId } = channelState;
+
+                  this.debugChannel(
+                    `quitting game ${gameId} in channel ${channelName}`
+                  );
+
+                  this.storage.gameStoppedInChannel(channelId);
+                  this.bot.postMessageToChannel(
+                    channelName,
+                    `stopped game ${gameId}.`
+                  );
+                  return;
+                }
+
+                if (command === "help") {
+                  this.bot.postMessageToChannel(channelName, USAGE);
+                  return;
+                }
+
+                let response = `unrecognized command ${command}.\n${USAGE}`;
                 this.bot.postMessageToChannel(channelName, response);
                 return;
               }
 
-              if (command.startsWith("play ")) {
-                let gameId = command.slice("play ".length).trim();
-                if (!GAMES[gameId]) {
+              if (this.isGameCommand(message)) {
+                // console.log(message, current_input_state);
+                if (!channelState) {
                   this.bot.postMessageToChannel(
                     channelName,
-                    `unknown game ${gameId}`
+                    "channel doesn't have an active game.  try 'play <gameid>'."
                   );
                   return;
                 }
 
+                let { gameId, snapshot, inputState } = channelState;
+
                 this.debugChannel(
-                  `starting game ${gameId} in channel ${channelName}`
+                  `game command '${this.getGameCommandText(
+                    message
+                  )}', game ${gameId} in channel ${channelName}`
                 );
 
-                let log = new Log(false);
-                let game = new Game(
-                  fs.readFileSync(GAMES[gameId].path),
-                  log,
-                  new BotScreen(log, this, this.storage, channelId, gameId),
-                  {
-                    saveSnapshot: saveNotSupported,
-                    loadSnapshot: loadNotSupported,
-                  }
-                );
+                if (inputState) {
+                  let log = new Log(false);
+                  let game = Game.fromSnapshot(
+                    snapshot,
+                    log,
+                    new BotScreen(log, this, this.storage, channelId, gameId),
+                    {
+                      saveSnapshot: saveNotSupported,
+                      loadSnapshot: loadNotSupported,
+                    }
+                  );
 
-                game.execute();
-
-                return;
-              }
-
-              if (command == "restart") {
-                if (!channelState) {
-                  this.bot.postMessage(
+                  game.continueAfterUserInput(
+                    inputState,
+                    this.getGameCommandText(message)
+                  );
+                } else {
+                  this.bot.postMessageToChannel(
                     channelName,
-                    "There isn't a game running in this channel."
+                    "not ready for input yet"
                   );
-                  return;
                 }
-
-                let { gameId } = channelState;
-                this.debugChannel(
-                  `restarting game ${gameId} in channel ${channelName}`
-                );
-
-                let log = new Log(false);
-                let game = new Game(
-                  fs.readFileSync(GAMES[gameId].path),
-                  log,
-                  new BotScreen(log, this, this.storage, channelId, gameId),
-                  {
-                    saveSnapshot: saveNotSupported,
-                    loadSnapshot: loadNotSupported,
-                  }
-                );
-
-                game.execute();
-
-                return;
               }
-
-              if (command == "quit") {
-                if (!channelState) {
-                  this.bot.postMessage(
-                    channelName,
-                    "There isn't a game running in this channel."
-                  );
-                  return;
-                }
-
-                let { gameId } = channelState;
-
-                this.debugChannel(
-                  `quitting game ${gameId} in channel ${channelName}`
-                );
-
-                this.storage.gameStoppedInChannel(channelId);
-                this.bot.postMessageToChannel(
-                  channelName,
-                  `stopped game ${gameId}.`
-                );
-                return;
-              }
-
-              if (command === "help") {
-                this.bot.postMessageToChannel(channelName, USAGE);
-                return;
-              }
-
-              let response = `unrecognized command ${command}.\n${USAGE}`;
-              this.bot.postMessageToChannel(channelName, response);
-              return;
+            } catch (e) {
+              console.error(e);
             }
-
-            if (this.isGameCommand(message)) {
-              // console.log(message, current_input_state);
-              if (!channelState) {
-                this.bot.postMessageToChannel(
-                  channelName,
-                  "channel doesn't have an active game.  try 'play <gameid>'."
-                );
-                return;
-              }
-
-              let { gameId, snapshot, inputState } = channelState;
-
-              this.debugChannel(
-                `game command '${this.getGameCommandText(
-                  message
-                )}', game ${gameId} in channel ${channelName}`
-              );
-
-              if (inputState) {
-                let log = new Log(false);
-                let game = Game.fromSnapshot(
-                  snapshot,
-                  log,
-                  new BotScreen(log, this, this.storage, channelId, gameId),
-                  {
-                    saveSnapshot: saveNotSupported,
-                    loadSnapshot: loadNotSupported,
-                  }
-                );
-
-                game.continueAfterUserInput(
-                  inputState,
-                  this.getGameCommandText(message)
-                );
-              } else {
-                this.bot.postMessageToChannel(
-                  channelName,
-                  "not ready for input yet"
-                );
-              }
-            }
-          } catch (e) {
-            console.error(e);
-          }
-        });
+          });
       });
     });
   }
 
-  isGameCommand(message) {
+  isGameCommand(message: SlackMessage) {
     return message.text[0] === "$";
   }
-  getGameCommandText(message) {
+  getGameCommandText(message: SlackMessage) {
     return message.text.slice(1);
   }
 
-  isChatMessage(message) {
+  isChatMessage(message: SlackMessage) {
     return message.type === "message" && Boolean(message.text);
   }
 
-  isChannelConversation(message) {
+  isChannelConversation(message: SlackMessage) {
     return typeof message.channel === "string" && message.channel[0] === "C";
   }
 
-  isAtMe(message) {
+  isAtMe(message: SlackMessage) {
     return !message.subtype && message.text.startsWith(`<@${this.user.id}>`);
   }
 
-  isFromMe(message) {
+  isFromMe(message: SlackMessage) {
     return message.bot_id === this.user.profile.bot_id;
   }
 }

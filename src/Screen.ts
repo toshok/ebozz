@@ -1,23 +1,24 @@
-import type Game from "./ebozz";
-import Log from "./log";
-import type { InputState } from "./types";
+import type Game from "./ebozz.js";
+import Log from "./log.js";
+import type { InputState } from "./types.js";
 
 export interface Screen {
-    getInputFromUser(_game: Game, _input_state)
-    print(game: Game, str: string)
-    splitWindow(game: Game, lines: number)
-    setOutputWindow(game: Game, windowId: number)
-    getOutputWindow(game: Game)
-    clearWindow(game: Game, windowId: number)
-    clearLine(_game: Game, _value: number)
-    setCursorPosition(_game: Game, _line: number, _column: number, _windowId: number)
-    hideCursor(_game: Game, _windowId: number)
-    showCursor(_game: Game, _windowId: number)
-    setBufferMode(_game: Game, _style: number)
-    setTextStyle(_game: Game, _style: number)
-    setTextColors(game: Game, windowId: number, foreground: number, background: number)
-    enableOutputStream(_game: Game, _streamId: number, _table: number, _width: number)
-    disableOutputStream(_game: Game, _streamId: number, _table: number, _width: number)
+    getInputFromUser(game: Game, input_state: InputState): void
+    print(game: Game, str: string): void
+    splitWindow(game: Game, lines: number): void
+    setOutputWindow(game: Game, windowId: number): void
+    getOutputWindow(game: Game): number
+    clearWindow(game: Game, windowId: number): void
+    clearLine(game: Game, value: number): void
+    setCursorPosition(_game: Game, _line: number, _column: number, _windowId: number): void
+    hideCursor(game: Game, windowId: number): void
+    showCursor(game: Game, windowId: number): void
+    setBufferMode(game: Game, style: number): void
+    setTextStyle(game: Game, style: number): void
+    setTextColors(game: Game, windowId: number, foreground: number, background: number): void
+    enableOutputStream(game: Game, streamId: number, table: number, width: number): void
+    disableOutputStream(game: Game, streamId: number, table: number, width: number): void
+    selectInputStream(game: Game, streamId: number): void
 }
 
 export class ScreenBase implements Screen {
@@ -29,7 +30,7 @@ export class ScreenBase implements Screen {
         this.id = id;
     }
 
-    getInputFromUser(_game: Game, _input_state) {
+    getInputFromUser(_game: Game, _input_state: InputState) {
         this.log.error(`not implemented: ${this.id} getInputFromUser`);
     }
 
@@ -47,6 +48,7 @@ export class ScreenBase implements Screen {
     
       getOutputWindow(game: Game) {
         this.log.error(`not implemented: ${this.id} getOutputWindow`);
+        return 0;
       }
     
       clearWindow(game: Game, windowId: number) {

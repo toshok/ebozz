@@ -1,9 +1,9 @@
-import readline from "readline-sync";
+import * as readline from "readline-sync";
 import chalk from "chalk";
-import Log from "../log";
-import type { InputState } from "../types";
-import { ScreenBase } from "../Screen"
-import type Game from "../ebozz";
+import Log from "../log.js";
+import type { InputState } from "../types.js";
+import { ScreenBase } from "../Screen.js"
+import type Game from "../ebozz.js";
 
 const TextStyles = {
   Roman: 0,
@@ -57,7 +57,7 @@ export default class StdioScreen extends ScreenBase {
     game.continueAfterUserInput(input_state, input);
   }
 
-  applyStyles(str) {
+  applyStyles(str: string) {
     if (this.textStyle & TextStyles.ReverseVideo) {
       str = chalk.inverse(str);
     }
@@ -71,47 +71,37 @@ export default class StdioScreen extends ScreenBase {
   }
 
   applyColors(str: string) {
-    // background first
-    const getChalkAccessor = (color: number, bg: boolean) => {
-      const bgOrNot = (name: string, bg: boolean) => (bg ? `bg${name}` : name.toLowerCase());
+    const chalkedString = (str: string, color: number, bg: boolean) => {
       switch (color) {
         case Colors.Black:
-          return bgOrNot("Black", bg);
+          return bg ? chalk.bgBlack(str) : chalk.black(str)
         case Colors.Red:
-          return bgOrNot("Red", bg);
+          return bg ? chalk.bgRed(str) : chalk.red(str);
         case Colors.Green:
-          return bgOrNot("Green", bg);
+          return bg ? chalk.bgGreen(str) : chalk.green(str);
         case Colors.Yellow:
-          return bgOrNot("Yellow", bg);
+          return bg ? chalk.bgYellow(str) : chalk.yellow(str);// bgOrNot("Yellow", bg);
         case Colors.Blue:
-          return bgOrNot("Blue", bg);
+          return bg ? chalk.bgBlue(str) : chalk.blue(str);
         case Colors.Magenta:
-          return bgOrNot("Magenta", bg);
+          return bg ? chalk.bgMagenta(str) : chalk.magenta(str);
         case Colors.Cyan:
-          return bgOrNot("Cyan", bg);
+          return bg ? chalk.bgCyan(str) : chalk.cyan(str);
         case Colors.White:
-          return bgOrNot("White", bg);
+          return bg ? chalk.bgWhite(str) : chalk.white(str);
         case Colors.Gray:
           // because why be consistent?  ugh, chalk.
-          return bg ? "bgBrightBlack" : "gray";
+          return bg ? chalk.bgBlackBright(str) : chalk.gray(str);
         default:
           throw new Error("unrecognized color");
       }
     };
 
     if (this.colors[this.outputWindowId].background !== Colors.Default) {
-      let accessor = getChalkAccessor(
-        this.colors[this.outputWindowId].background,
-        true
-      );
-      str = chalk[accessor](str);
+      str = chalkedString(str, this.colors[this.outputWindowId].background, true)
     }
     if (this.colors[this.outputWindowId].foreground !== Colors.Default) {
-      let accessor = getChalkAccessor(
-        this.colors[this.outputWindowId].foreground,
-        false
-      );
-      str = chalk[accessor](str);
+      str = chalkedString(str, this.colors[this.outputWindowId].foreground, false)
     }
 
     return str;

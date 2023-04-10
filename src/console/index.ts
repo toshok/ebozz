@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-import Log from "../log";
-import Game from "../ebozz";
-import BlessedScreen from "./blessed-screen";
-import StdioScreen from "./stdio-screen";
-import { dumpHeader, dumpDictionary, dumpObjectTable } from "../debug-helpers";
-
 import * as fs from "fs";
-import * as nopt from "nopt";
+import nopt from "nopt";
+
+import Log from "../log.js";
+import Game from "../ebozz.js";
+import BlessedScreen from "./blessed-screen.js";
+import StdioScreen from "./stdio-screen.js";
+import {
+  dumpHeader,
+  dumpDictionary,
+  dumpObjectTable,
+} from "../debug-helpers.js";
 
 let knownOpts = {
   debug: Boolean,
@@ -46,13 +50,13 @@ if (parsed.screen === "blessed") {
 }
 
 let storage = {
-  saveSnapshot(game) {
+  saveSnapshot(game: Game) {
     fs.writeFileSync("snapshot.dat", game.snapshotToBuffer(), {
       encoding: "binary",
     });
   },
 
-  loadSnapshot(_game) {
+  loadSnapshot(_game: Game) {
     let f = fs.readFileSync("snapshot.dat");
     return Game.readSnapshotFromBuffer(Buffer.from(f.buffer));
   },

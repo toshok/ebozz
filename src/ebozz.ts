@@ -1,12 +1,12 @@
-import type { CallFrame, Address, ZString, Storage, FIXME, InputState } from "./types";
-import type { Screen } from "./Screen";
-import GameObject from "./GameObject";
-import SuspendForUserInput from "./SuspendForUserInput";
+import type { CallFrame, Address, ZString, Storage, InputState } from "./types.js";
+import type { Screen } from "./Screen.js";
+import GameObject from "./GameObject.js";
+import SuspendForUserInput from "./SuspendForUserInput.js";
 
-import { op0, op1, op2, op3, op4, opv } from "./opcodes";
-import { toI16 } from "./cast16";
-import { hex, dumpParsebuffer } from "./debug-helpers";
-import Log from "./log";
+import { op0, op1, op2, op3, op4, opv } from "./opcodes.js";
+import { toI16 } from "./cast16.js";
+import { hex, dumpParsebuffer } from "./debug-helpers.js";
+import Log from "./log.js";
 
 const OperandType = {
   //  $$00    Large constant (0 to 65535)    2 bytes
@@ -30,14 +30,14 @@ const INSTRUCTION_FORM_VARIABLE = 2;
 export default class Game {
   private _pc: Address;
   private _stack: Array<number>;
-  private _callstack: Array<CallFrame>;
+  /*private*/ _callstack: Array<CallFrame>;
   private _op_pc: Address;
 
   private _mem: Buffer;
   /*private*/ _log: Log;
   /*private*/ _screen: Screen;
   private _storage: Storage;
-  private _quit: boolean;
+  /*private*/ _quit: boolean;
   /*private*/ _version: number;
   private _highmem: number;
   private _global_vars: number;
@@ -522,7 +522,7 @@ export default class Game {
     return this._stack[this._stack.length - 1];
   }
 
-  storeVariable(v, value, replaceTop = false) {
+  storeVariable(v: number, value: number, replaceTop = false) {
     if (v === 0) {
       if (replaceTop) {
         this.popStack();
@@ -548,7 +548,7 @@ export default class Game {
     }
   }
 
-  loadVariable(variable, peekTop = false) {
+  loadVariable(variable: number, peekTop = false) {
     if (variable === 0) {
       if (peekTop) {
         return this.peekStack();
@@ -660,7 +660,7 @@ export default class Game {
     return [offset, (branchData & 0x80) === 0x00];
   }
 
-  doBranch(cond, condfalse, offset) {
+  doBranch(cond: boolean, condfalse: boolean, offset: number) {
     this._log.debug(`     ${cond} ${!condfalse} ${offset}`);
     if ((cond && !condfalse) || (!cond && condfalse)) {
       if (offset === 0) {
@@ -679,7 +679,7 @@ export default class Game {
     }
   }
 
-  callRoutine(addr, rv_location, ...args) {
+  callRoutine(addr: Address, rv_location: number | null, ...args: Array<number>) {
     // initialize locals
     let num_locals = this.getByte(addr++);
     let locals = Array(num_locals);
@@ -713,7 +713,7 @@ export default class Game {
     this._callstack.push(new_frame);
     this._pc = addr;
   }
-  returnFromRoutine(value) {
+  returnFromRoutine(value: number) {
     let popped_frame = this._callstack.pop();
     if (popped_frame === undefined) {
       throw new Error("callstack empty in return");
@@ -729,7 +729,7 @@ export default class Game {
     return cur_frame.arg_count;
   }
 
-  lookupToken(dict, encoded_token_words) {
+  lookupToken(dict: number, encoded_token_words: Array<number>) {
     // skip the separators
     let num_sep = this.getByte(dict);
     dict += num_sep + 1;
@@ -790,7 +790,7 @@ export default class Game {
   }
 
   // XXX(toshok) woefully inadequate, but should handle ascii + separators
-  encodeToken(text, padding = 0x05) {
+  encodeToken(text: string, padding = 0x05) {
     this._log.debug(`encodeToken(${text})`);
     let resolution = this._version > 3 ? 3 : 2;
 
@@ -828,7 +828,7 @@ export default class Game {
     return zwords;
   }
 
-  tokenise_word(inputbuffer, start, end, parsebuffer) {
+  tokenise_word(inputbuffer: string, start: number, end: number, parsebuffer: number) {
     // the parse buffer contains as the first two bytes
     // [0]: max tokens
     // [1]: count tokens
@@ -856,7 +856,7 @@ export default class Game {
     }
   }
 
-  tokeniseText(textBuffer: Address, length, from, parseBuffer: Address, dict, flag) {
+  tokeniseText(textBuffer: Address, length: number, from: number, parseBuffer: Address, dict: number, flag: boolean) {
     let token_max, token_count;
 
     token_max = this.getByte(parseBuffer);
@@ -885,7 +885,7 @@ export default class Game {
     }
   }
 
-  tokeniseLine(textBuffer, parseBuffer, dict, flag) {
+  tokeniseLine(textBuffer: number, parseBuffer: number, dict: number, flag: boolean) {
     // default to the standard dictionary
     if (dict === 0) {
       dict = this._dict;
@@ -957,7 +957,7 @@ export default class Game {
     } while (c != 0);
   }
 
-  tokenise(inputtext, parsebuffer) {
+  tokenise(inputtext: string, parsebuffer: number) {
     // clean parsebuffer by setting count_tokens == 0
     this.setByte(parsebuffer + 1, 0);
 
@@ -971,7 +971,7 @@ export default class Game {
       `sep_zscii = ${sep_zscii.map((ch) => String.fromCharCode(ch))}`
     );
 
-    function is_separator(c) {
+    function is_separator(c: string) {
       return sep_zscii.indexOf(c.charCodeAt(0)) !== -1;
     }
 
@@ -979,7 +979,7 @@ export default class Game {
     const CHAR_CLASS_SEP = 1;
     const CHAR_CLASS_WORD = 0;
 
-    function char_class(c) {
+    function char_class(c: string) {
       if (c === " ") {
         return CHAR_CLASS_SPACE;
       }

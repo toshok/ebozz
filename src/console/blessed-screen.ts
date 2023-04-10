@@ -1,11 +1,11 @@
 import * as blessed from "blessed";
-import Log from "../log";
-import { ScreenBase } from "../Screen";
-import type Game from "../ebozz";
-import { InputState } from "../types";
+import Log from "../log.js";
+import { ScreenBase } from "../Screen.js";
+import type Game from "../ebozz.js";
+import { InputState } from "../types.js";
 
 export default class BlessedScreen extends ScreenBase {
-  private screen: any;
+  private screen: blessed.Widgets.Screen;
   private gameLog: any;
 
   constructor(log: Log) {
@@ -26,7 +26,7 @@ export default class BlessedScreen extends ScreenBase {
 
     this.gameLog.focus();
 
-    this.screen.key(["C-c"], function(_ch, _key) {
+    this.screen.key(["C-c"], (_ch, _key) => {
       this.screen.destroy();
       return process.exit(0);
     });

@@ -1,6 +1,6 @@
-import type Game from "./ebozz";
-import type GameObject from "./GameObject";
-import Log from "./log";
+import type Game from "./ebozz.js";
+import type GameObject from "./GameObject.js";
+import Log from "./log.js";
 
 export type FIXME = unknown;
 
@@ -29,7 +29,7 @@ export interface Storage {
 export interface CallFrame {
     method_pc: number;
     return_pc: number;
-    return_value_location: number;
+    return_value_location: number | null; // why can this be null?
     locals: Array<number>;
     arg_count: number;
 }

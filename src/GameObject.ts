@@ -1,7 +1,7 @@
-import type Game from "./ebozz";
-import type { Address } from "./types";
-import zstringToAscii from "./zstringToAscii";
-import { hex } from "./debug-helpers";
+import type Game from "./ebozz.js";
+import type { Address } from "./types.js";
+import zstringToAscii from "./zstringToAscii.js";
+import { hex } from "./debug-helpers.js";
 
 export default class GameObject {
   private state: Game;
@@ -19,7 +19,7 @@ export default class GameObject {
     }
   }
 
-  dumpPropData(entry) {
+  dumpPropData(entry: number) {
     let propDataPtr = this._propDataPtr(entry);
     let propDataLen = GameObject._propDataLen(this.state, entry);
     let data: Array<number> = [];
@@ -108,7 +108,7 @@ export default class GameObject {
     );
   }
 
-  hasAttribute(attr) {
+  hasAttribute(attr: number) {
     if (this.state._version <= 3) {
       if (attr >= 32) {
         throw new Error("attribute number out of range");
@@ -122,7 +122,7 @@ export default class GameObject {
     let value = this.state.getByte(this.objaddr + byte_index);
     return (value & (0x80 >> (attr & 7))) !== 0;
   }
-  setAttribute(attr) {
+  setAttribute(attr: number) {
     if (this.state._version <= 3) {
       if (attr >= 32) {
         throw new Error("attribute number out of range");
@@ -137,7 +137,7 @@ export default class GameObject {
     value |= 0x80 >> (attr & 7);
     this.state.setByte(this.objaddr + byte_index, value);
   }
-  clearAttribute(attr) {
+  clearAttribute(attr: number) {
     if (this.state._version <= 3) {
       if (attr >= 32) {
         throw new Error("attribute number out of range");
@@ -185,21 +185,21 @@ export default class GameObject {
     throw new Error("sibling list is in a bad state, couldn't find prev node");
   }
 
-  _nextPropEntry(propAddr) {
+  _nextPropEntry(propAddr: Address) {
     return propAddr + this._propEntrySize(propAddr);
   }
 
-  _propEntrySize(propAddr) {
+  _propEntrySize(propAddr: Address) {
     return GameObject._propDataLen(this.state, propAddr) + 1;
   }
 
-  _propEntryNum(entryAddr) {
+  _propEntryNum(entryAddr: Address) {
     let mask = this.state._version <= 3 ? 0x1f : 0x3f;
     let sizeByte = this.state.getByte(entryAddr);
     return sizeByte & mask;
   }
 
-  static _propDataLen(state, propAddr) {
+  static _propDataLen(state: Game, propAddr: Address) {
     let size = state.getByte(propAddr);
 
     if (state._version <= 3) {
@@ -219,7 +219,7 @@ export default class GameObject {
     return size + 1;
   }
 
-  _propDataPtr(propAddr) {
+  _propDataPtr(propAddr: Address) {
     if (this.state._version <= 3) {
       return propAddr + 1;
     } else {
@@ -239,7 +239,7 @@ export default class GameObject {
     return addr + 1 + 2 * nameLen;
   }
 
-  _getPropEntry(prop) {
+  _getPropEntry(prop: number) {
     let entry = this._firstPropEntry();
     let propNum;
     do {
@@ -252,7 +252,7 @@ export default class GameObject {
     return 0;
   }
 
-  getProperty(prop) {
+  getProperty(prop: number) {
     let propAddr = this._getPropEntry(prop);
     if (propAddr === null) {
       throw new Error("default property values not supported");
@@ -268,7 +268,7 @@ export default class GameObject {
     }
   }
 
-  putProperty(prop, value) {
+  putProperty(prop: number, value: number) {
     let propAddr = this._getPropEntry(prop);
     if (propAddr === 0) {
       throw new Error(`missing property ${prop}`);
@@ -284,7 +284,7 @@ export default class GameObject {
     }
   }
 
-  getPropertyAddress(prop) {
+  getPropertyAddress(prop: number) {
     let propAddr = this._getPropEntry(prop);
     if (propAddr === 0) {
       return 0;
@@ -292,11 +292,11 @@ export default class GameObject {
     return this._propDataPtr(propAddr);
   }
 
-  static entryFromDataPtr(dataAddr) {
+  static entryFromDataPtr(dataAddr: Address) {
     return dataAddr - 1;
   }
 
-  static getPropertyLength(state, dataAddr) {
+  static getPropertyLength(state: Game, dataAddr: Address) {
     if (dataAddr === 0) {
       return 0;
     }
@@ -305,7 +305,7 @@ export default class GameObject {
     return GameObject._propDataLen(state, entry);
   }
 
-  getNextProperty(prop) {
+  getNextProperty(prop: number) {
     let propAddr;
     if (prop === 0) {
       propAddr = this._firstPropEntry();

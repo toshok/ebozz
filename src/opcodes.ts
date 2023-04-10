@@ -1,16 +1,17 @@
-import type Game from "./ebozz";
-import type { Address } from "./types";
-import zstringToAscii from "./zstringToAscii";
-import GameObject from "./GameObject";
-import SuspendForUserInput from "./SuspendForUserInput";
-import { hex } from "./debug-helpers";
-import { toI16, toU16 } from "./cast16";
+import type Game from "./ebozz.js";
+import type { Address } from "./types.js";
+import zstringToAscii from "./zstringToAscii.js";
+import GameObject from "./GameObject.js";
+import SuspendForUserInput from "./SuspendForUserInput.js";
+import { hex } from "./debug-helpers.js";
+import { toI16, toU16 } from "./cast16.js";
 
 // function isZasciiInput(c) {
 //   return c >= 32 && c <= 126; // XXX only ascii for now.
 // }
 
-function unimplemented(msg) {
+type OpcodeFn = (g: Game, ...operands: Array<number>) => void;
+function unimplemented(msg: string) {
   if (msg) {
     throw new Error(`unimplemented: ${msg}`);
   }
@@ -23,11 +24,11 @@ function illegalOpcode() {
   });
 }
 
-function opcode(mnemonic, impl) {
+function opcode(mnemonic: string, impl: OpcodeFn) {
   return { mnemonic, impl };
 }
 
-function unimplementedOpcode(mnemonic) {
+function unimplementedOpcode(mnemonic: string) {
   return opcode(mnemonic, () => unimplemented(`opcode: ${mnemonic}`));
 }
 
@@ -35,12 +36,12 @@ function nopcode() {
   return opcode("nop", () => {});
 }
 
-function opcodeImpl(fn) {
+function opcodeImpl(fn: OpcodeFn) {
   return opcode(fn.name, fn);
 }
 
 // branch opcodes
-function je(s, a, b, c, d) {
+function je(s: Game, a: number, b: number, c: number, d: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${hex(c)} ${hex(
@@ -52,7 +53,7 @@ function je(s, a, b, c, d) {
   s.doBranch(cond, condfalse, offset);
 }
 
-function jl(s, a, b) {
+function jl(s: Game, a: number, b: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jl ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
@@ -62,7 +63,7 @@ function jl(s, a, b) {
   s.doBranch(toI16(a) < toI16(b), condfalse, offset);
 }
 
-function jg(s, a, b) {
+function jg(s: Game, a: number, b: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jg ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
@@ -72,7 +73,7 @@ function jg(s, a, b) {
   s.doBranch(toI16(a) > toI16(b), condfalse, offset);
 }
 
-function jin(s, obj1, obj2) {
+function jin(s: Game, obj1: number, obj2: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jin ${hex(obj1)} ${hex(obj2)} -> [${!condfalse}] ${hex(
@@ -89,7 +90,7 @@ function jin(s, obj1, obj2) {
   }
 }
 
-function jz(s, a) {
+function jz(s: Game, a: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
@@ -103,11 +104,11 @@ function jz(s, a) {
   s.doBranch(a === 0, condfalse, offset);
 }
 
-function jump(s, addr) {
+function jump(s: Game, addr: number) {
   s.pc = s.pc + toI16(addr) - 2;
 }
 
-function test(s, bitmap, flags) {
+function test(s: Game, bitmap: number, flags: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} test ${hex(bitmap)} ${hex(flags)} -> [${!condfalse}] ${hex(
@@ -117,47 +118,47 @@ function test(s, bitmap, flags) {
   s.doBranch((bitmap & flags) === flags, condfalse, offset);
 }
 
-function check_arg_count(s, argNumber) {
+function check_arg_count(s: Game, argNumber: number) {
   let [offset, condfalse] = s.readBranchOffset();
 
   s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
 }
 
 // math opcodes
-function or(s, a, b) {
+function or(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), a | b);
 }
 
-function and(s, a, b) {
+function and(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), a & b);
 }
 
-function add(s, a, b) {
+function add(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), toI16(a) + toI16(b));
 }
 
-function sub(s, a, b) {
+function sub(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), toI16(a) - toI16(b));
 }
 
-function mul(s, a, b) {
+function mul(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), toI16(a) * toI16(b));
 }
 
-function div(s, a, b) {
+function div(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), Math.floor(toI16(a) / toI16(b)));
 }
 
-function mod(s, a, b) {
+function mod(s: Game, a: number, b: number) {
   s.storeVariable(s.readByte(), toI16(a) % toI16(b));
 }
 
-function not(s, value) {
+function not(s: Game, value: number) {
   s.storeVariable(s.readByte(), value ^ 0xffff);
 }
 
 // object/attribute related opcodes
-function test_attr(s, obj, attribute) {
+function test_attr(s: Game, obj: number, attribute: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} test_attr ${hex(obj)} ${hex(
@@ -173,25 +174,41 @@ function test_attr(s, obj, attribute) {
   }
 }
 
-function set_attr(s, obj, attribute) {
+function set_attr(s: Game, obj: number, attribute: number) {
   s._log.debug(`${hex(s.op_pc)} set_attr ${obj} ${attribute}`);
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.error("object null in set_attr");
+    return;
+  }
   o.setAttribute(attribute);
 }
 
-function clear_attr(s, obj, attribute) {
+function clear_attr(s: Game, obj: number, attribute: number) {
   s._log.debug(`${hex(s.op_pc)} clear_attr ${obj} ${attribute}`);
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.error("object null in clear_attr");
+    return;
+  }
   o.clearAttribute(attribute);
 }
 
-function insert_obj(s, obj, destination) {
+function insert_obj(s: Game, obj: number, destination: number) {
   s._log.debug(`${hex(s.op_pc)} insert_obj ${obj} ${destination}`);
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.error("object null in insert_obj");
+    return;
+  }
   let desto = s.getObject(destination);
+  if (desto === null) {
+    s._log.error("destination object null in insert_obj");
+    return;
+  }
   if (o.parent) {
     // need to unlink it from its current parent
-    if (o.parent.child.objnum === o.objnum) {
+    if (o.parent.child?.objnum === o.objnum) {
       // it's the first child.  easy.
       o.parent.child = o.sibling;
     } else {
@@ -199,7 +216,7 @@ function insert_obj(s, obj, destination) {
       let next;
       for (let c = p.child; c !== null; c = next) {
         next = c.sibling;
-        if (next.objnum === o.objnum) {
+        if (next?.objnum === o.objnum) {
           c.sibling = o.sibling;
           break;
         }
@@ -215,7 +232,7 @@ function insert_obj(s, obj, destination) {
   o.parent.child = o;
 }
 
-function get_prop(s, obj, property) {
+function get_prop(s: Game, obj: number, property: number) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop ${hex(obj)} ${hex(property)} -> (${hex(
@@ -231,7 +248,7 @@ function get_prop(s, obj, property) {
   s.storeVariable(resultVar, o.getProperty(property));
 }
 
-function get_prop_addr(s, obj, property) {
+function get_prop_addr(s: Game, obj: number, property: number) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop_addr ${hex(obj)} ${hex(property)} -> (${hex(
@@ -239,10 +256,14 @@ function get_prop_addr(s, obj, property) {
     )})`
   );
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.warn("get_prop_addr called on null object");
+    return;
+  }
   s.storeVariable(resultVar, o.getPropertyAddress(property));
 }
 
-function get_next_prop(s, obj, property) {
+function get_next_prop(s: Game, obj: number, property: number) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_next_prop ${hex(obj)} ${hex(property)} -> (${hex(
@@ -250,6 +271,10 @@ function get_next_prop(s, obj, property) {
     )})`
   );
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.warn("get_next_prop called on null object");
+    return;
+  }
   s.storeVariable(resultVar, o.getNextProperty(property));
 }
 
@@ -279,7 +304,7 @@ function get_sibling(s: Game, obj: Address) {
   s.doBranch(sibling !== null, condfalse, offset);
 }
 
-function get_child(s: Game, obj) {
+function get_child(s: Game, obj: number) {
   let resultVar = s.readByte();
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
@@ -289,6 +314,10 @@ function get_child(s: Game, obj) {
   );
 
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.warn("object is 0 in get_child");
+    return;
+  }
   let child = o.child;
   if (child) {
     s.storeVariable(resultVar, child.objnum);
@@ -298,7 +327,7 @@ function get_child(s: Game, obj) {
   s.doBranch(child !== null, condfalse, offset);
 }
 
-function get_parent(s: Game, obj) {
+function get_parent(s: Game, obj: number) {
   let resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} get_parent ${hex(obj)} -> (${hex(resultVar)})`);
   let o = s.getObject(obj);
@@ -309,13 +338,17 @@ function get_parent(s: Game, obj) {
   s.storeVariable(resultVar, parent_objnum);
 }
 
-function remove_obj(s: Game, obj) {
+function remove_obj(s: Game, obj: number) {
   s._log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.error("object null in remove_obj");
+    return;
+  }
   o.unlink();
 }
 
-function put_prop(s: Game, obj, property, value) {
+function put_prop(s: Game, obj: number, property: number, value: number) {
   s._log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
   let o = s.getObject(obj);
   if (o === null) {
@@ -325,7 +358,7 @@ function put_prop(s: Game, obj, property, value) {
   o.putProperty(property, value);
 }
 
-function get_prop_len(s, propDataAddr) {
+function get_prop_len(s: Game, propDataAddr: Address) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop_len ${hex(propDataAddr)} -> (${hex(resultVar)})`
@@ -335,7 +368,7 @@ function get_prop_len(s, propDataAddr) {
 }
 
 // stack manipulation
-function push(s: Game, value) {
+function push(s: Game, value: number) {
   s.pushStack(value);
 }
 
@@ -343,12 +376,12 @@ function pop(s: Game) {
   s.popStack();
 }
 
-function pull(s: Game, variable) {
+function pull(s: Game, variable: number) {
   s.storeVariable(variable, s.popStack());
 }
 
 // increment/decrement variables
-function dec_chk(s: Game, variable, value) {
+function dec_chk(s: Game, variable: number, value: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} dec_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
@@ -361,7 +394,7 @@ function dec_chk(s: Game, variable, value) {
   s.doBranch(new_val < toI16(value), condfalse, offset);
 }
 
-function inc_chk(s: Game, variable, value) {
+function inc_chk(s: Game, variable: number, value: number) {
   let [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} inc_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
@@ -374,7 +407,7 @@ function inc_chk(s: Game, variable, value) {
   s.doBranch(new_val > toI16(value), condfalse, offset);
 }
 
-function inc(s: Game, variable) {
+function inc(s: Game, variable: number) {
   s.storeVariable(
     variable,
     toU16(toI16(s.loadVariable(variable, true)) + 1),
@@ -382,7 +415,7 @@ function inc(s: Game, variable) {
   );
 }
 
-function dec(s: Game, variable) {
+function dec(s: Game, variable: number) {
   s.storeVariable(
     variable,
     toU16(toI16(s.loadVariable(variable, true)) - 1),
@@ -391,31 +424,31 @@ function dec(s: Game, variable) {
 }
 
 // load/store variables
-function store(s: Game, variable, value) {
+function store(s: Game, variable: number, value: number) {
   s._log.debug(`${hex(s.op_pc)} store (${hex(variable)}) ${hex(value)}`);
   s.storeVariable(variable, value, true);
 }
 
-function storew(s: Game, array, word_index, value) {
+function storew(s: Game, array: number, word_index: number, value: number) {
   s._log.debug(
     `${hex(s.op_pc)} storew ${hex(array)} ${hex(word_index)} ${hex(value)}`
   );
   s.setWord((array + 2 * word_index) & 0xffff, value);
 }
-function storeb(s: Game, array, byte_index, value) {
+function storeb(s: Game, array: number, byte_index: number, value: number) {
   s._log.debug(
     `${hex(s.op_pc)} storeb ${hex(array)} ${hex(byte_index)} ${hex(value)}`
   );
   s.setByte((array + byte_index) & 0xffff, value);
 }
 
-function load(s: Game, variable) {
+function load(s: Game, variable: number) {
   let resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
   s.storeVariable(resultVar, s.loadVariable(variable, true), true);
 }
 
-function loadw(s: Game, array, word_index) {
+function loadw(s: Game, array: number, word_index: number) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
@@ -425,7 +458,7 @@ function loadw(s: Game, array, word_index) {
   s.storeVariable(resultVar, s.getWord((array + 2 * word_index) & 0xffff));
 }
 
-function loadb(s: Game, array, byte_index) {
+function loadb(s: Game, array: number, byte_index: number) {
   let resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
@@ -436,7 +469,7 @@ function loadb(s: Game, array, byte_index) {
 }
 
 // opcodes dealing with function calls/returns
-function call_1s(s: Game, routine) {
+function call_1s(s: Game, routine: Address) {
   let resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
@@ -449,7 +482,7 @@ function call_1s(s: Game, routine) {
   s.callRoutine(routine, resultVar);
 }
 
-function call_1n(s: Game, routine) {
+function call_1n(s: Game, routine: Address) {
   if (routine === 0) {
     return;
   }
@@ -458,7 +491,7 @@ function call_1n(s: Game, routine) {
   s.callRoutine(routine, null);
 }
 
-function call_2s(s: Game, routine, arg1) {
+function call_2s(s: Game, routine: Address, arg1: number) {
   let resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
@@ -471,7 +504,7 @@ function call_2s(s: Game, routine, arg1) {
   s.callRoutine(routine, resultVar, arg1);
 }
 
-function call_2n(s: Game, routine, arg1) {
+function call_2n(s: Game, routine: Address, arg1: number) {
   if (routine === 0) {
     return;
   }
@@ -480,7 +513,7 @@ function call_2n(s: Game, routine, arg1) {
   s.callRoutine(routine, null, arg1);
 }
 
-function call_vs2(s: Game, routine, ...args) {
+function call_vs2(s: Game, routine: Address, ...args: Array<number>) {
   let resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
@@ -493,7 +526,7 @@ function call_vs2(s: Game, routine, ...args) {
   s.callRoutine(routine, resultVar, ...args);
 }
 
-function call(s: Game, routine, ...args) {
+function call(s: Game, routine: Address, ...args: Array<number>) {
   let resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
@@ -506,7 +539,7 @@ function call(s: Game, routine, ...args) {
   s.callRoutine(routine, resultVar, ...args);
 }
 
-function call_vn2(s: Game, routine, ...args) {
+function call_vn2(s: Game, routine: Address, ...args: Array<number>) {
   if (routine === 0) {
     return;
   }
@@ -515,7 +548,7 @@ function call_vn2(s: Game, routine, ...args) {
   s.callRoutine(routine, null, ...args);
 }
 
-function ret(s: Game, value) {
+function ret(s: Game, value: number) {
   s.returnFromRoutine(value);
 }
 
@@ -538,7 +571,7 @@ function print_ret(s: Game) {
 }
 
 // screen-related opcodes
-function set_color(s: Game, foreground, background, window) {
+function set_color(s: Game, foreground: number, background: number, window: number) {
   if (s._version <= 5) {
     window = 0;
   }
@@ -546,18 +579,22 @@ function set_color(s: Game, foreground, background, window) {
   s._screen.setTextColors(s, window, foreground, background);
 }
 
-function print_addr(s: Game, stringAddr) {
+function print_addr(s: Game, stringAddr: Address) {
   s._log.debug(`${hex(s.op_pc)} print_addr ${hex(stringAddr)}`);
   s._screen.print(s, zstringToAscii(s, s.getZString(stringAddr), true));
 }
 
-function print_obj(s: Game, obj) {
+function print_obj(s: Game, obj: number) {
   s._log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
   let o = s.getObject(obj);
+  if (o === null) {
+    s._log.warn(`print_obj: object ${hex(obj)} not found`);
+    return;
+  }
   s._screen.print(s, `${o.name}`);
 }
 
-function print_paddr(s: Game, packed_addr) {
+function print_paddr(s: Game, packed_addr: Address) {
   s._screen.print(
     s,
     zstringToAscii(s, s.getZString(s.unpackStringAddress(packed_addr)), true)
@@ -568,7 +605,7 @@ function new_line(s: Game) {
   s._screen.print(s, "\n");
 }
 
-function show_status(s) {
+function show_status(s: Game) {
   if (s._version >= 4) {
     return;
   }
@@ -582,18 +619,18 @@ function print(s: Game) {
   s._screen.print(s, zstringToAscii(s, s.readZString(), true));
 }
 
-function split_window(s: Game, lines) {
+function split_window(s: Game, lines: number) {
   s._screen.splitWindow(s, lines);
 }
-function set_window(s: Game, window) {
+function set_window(s: Game, window: number) {
   s._screen.setOutputWindow(s, window);
 }
 
-function erase_window(s: Game, window) {
+function erase_window(s: Game, window: number) {
   s._screen.clearWindow(s, window);
 }
 
-function erase_line(s: Game, value) {
+function erase_line(s: Game, value: number) {
   s._screen.clearLine(s, value);
 }
 
@@ -615,20 +652,20 @@ function set_cursor(s: Game, line: number, column: number, window: number) {
   s._screen.setCursorPosition(s, line, column, window);
 }
 
-function get_cursor(s: Game, array) {
+function get_cursor(s: Game, array: number) {
   s._log.warn(`get_cursor ${array} -- not implemented`);
 }
 
-function set_text_style(s: Game, style) {
+function set_text_style(s: Game, style: number) {
   s._screen.setTextStyle(s, style);
 }
 
-function buffer_mode(s: Game, flag) {
+function buffer_mode(s: Game, flag: number) {
   s._screen.setBufferMode(s, flag);
 }
 
-function output_stream(s: Game, number, table, width) {
-  let streamNumber = toI16(number);
+function output_stream(s: Game, streamNum: number, table: number, width: number) {
+  let streamNumber = toI16(streamNum);
   if (streamNumber === 0) {
     // why emit this opcode at all?
     return;
@@ -639,11 +676,12 @@ function output_stream(s: Game, number, table, width) {
   }
   s._screen.disableOutputStream(s, -streamNumber, table, width);
 }
-function input_stream(s, number) {
-  s._screen.selectInputStream(s, toI16(number));
+
+function input_stream(s: Game, streamNum: number) {
+  s._screen.selectInputStream(s, toI16(streamNum));
 }
 
-function save(s) {
+function save(s: Game) {
   let [offset, condfalse] = s.readBranchOffset();
 
   let saved = s.saveGame();
@@ -654,7 +692,7 @@ function save(s) {
   }
 }
 
-function restore(s) {
+function restore(s: Game) {
   let [offset, condfalse] = s.readBranchOffset();
 
   let restored = s.restoreGame();
@@ -665,12 +703,12 @@ function restore(s) {
   }
 }
 
-function quit(s) {
+function quit(s: Game) {
   s._quit = true;
 }
 
-function sread(s, textBuffer, parseBuffer, time, routine) {
-  let resultVar;
+function sread(s: Game, textBuffer: number, parseBuffer: number, time: number, routine: Address) {
+  let resultVar = 0;
 
   if (s._version >= 5) {
     resultVar = s.readByte();
@@ -689,14 +727,14 @@ function sread(s, textBuffer, parseBuffer, time, routine) {
     resultVar,
   });
 }
-function print_char(s, ...chars) {
+function print_char(s: Game, ...chars: Array<number>) {
   s._log.debug(`print_char(${chars})`);
   s._screen.print(s, chars.map((c) => String.fromCharCode(c)).join(""));
 }
-function print_num(s, value) {
+function print_num(s: Game, value: number) {
   s._screen.print(s, toI16(value).toString());
 }
-function random(s, range) {
+function random(s: Game, range: number) {
   s._log.debug(`random(${range})`);
   let resultVar = s.readByte();
   if (range <= 0) {
@@ -708,15 +746,15 @@ function random(s, range) {
   }
 }
 
-function sound_effect(s, number, _effect, _volume, _routine) {
+function sound_effect(s: Game, number: number, _effect: number, _volume: number, _routine: Address) {
   s._log.warn(`sound_effect ${number} -- not implemented`);
 }
-function read_char(s, _dev, _time, _routine) {
+function read_char(s: Game, _dev: number, _time: number, _routine: Address) {
   let resultVar = s.readByte();
   //    readline.keyIn("{ hideEchoBack: true, mask: "" });
   s.storeVariable(resultVar, 32 /*XXX*/);
 }
-function scan_table(s, x, table, len, form = 0x82) {
+function scan_table(s: Game, x: number, table: number, len: number, form = 0x82) {
   let resultVar = s.readByte();
   let [offset, condfalse] = s.readBranchOffset();
 
@@ -744,11 +782,11 @@ function scan_table(s, x, table, len, form = 0x82) {
   // don't branch
 }
 
-function tokenise(s, text, tokenBuffer, dict = 0, flag = 0) {
+function tokenise(s: Game, text: number, tokenBuffer: number, dict = 0, flag = 0) {
   s.tokeniseLine(text, tokenBuffer, dict, flag != 0);
 }
 
-function print_table(s, zscii_text, width, height, skip) {
+function print_table(s: Game, zscii_text: number, width: number, height: number, skip: number) {
   s._log.debug("print_table");
   if (width) {
     s._log.debug(`width = ${width}`);
@@ -761,18 +799,18 @@ function print_table(s, zscii_text, width, height, skip) {
   }
 }
 
-function piracy(s) {
+function piracy(s: Game) {
   let [offset, condfalse] = s.readBranchOffset();
   // we are gullible and assume everything is okay.
   s.doBranch(true, condfalse, offset);
 }
 
-function zCatch(s) {
+function zCatch(s: Game) {
   let resultVar = s.readByte();
   s.storeVariable(resultVar, s._callstack.length - 1);
 }
 
-function zThrow(s, returnVal, frameNum) {
+function zThrow(s: Game, returnVal: number, frameNum: number) {
   if (frameNum >= s._callstack.length) {
     throw new Error("bad frame number");
   }

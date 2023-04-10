@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import * as fs from "fs";
 
-import Log from "./log";
-import Game from "./ebozz";
-import { ScreenBase } from "./Screen";
-import { InputState, Storage } from "./types";
+import Log from "./log.js";
+import Game from "./ebozz.js";
+import { ScreenBase } from "./Screen.js";
+import { InputState, Storage } from "./types.js";
 
 let gameName = process.argv[2];
 
