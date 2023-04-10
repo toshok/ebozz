@@ -1,18 +1,26 @@
+import type { CallFrame, Address, ZString, Storage, FIXME, InputState } from "./types";
+import type { Screen } from "./Screen";
 import GameObject from "./GameObject";
 import SuspendForUserInput from "./SuspendForUserInput";
 
 import { op0, op1, op2, op3, op4, opv } from "./opcodes";
 import { toI16 } from "./cast16";
 import { hex, dumpParsebuffer } from "./debug-helpers";
+import Log from "./log";
 
-//  $$00    Large constant (0 to 65535)    2 bytes
-//  $$01    Small constant (0 to 255)      1 byte
-//  $$10    Variable                       1 byte
-//  $$11    Omitted altogether             0 bytes
-const OPERAND_TYPE_LARGE = 0;
-const OPERAND_TYPE_SMALL = 1;
-const OPERAND_TYPE_VARIABLE = 2;
-const OPERAND_TYPE_OMITTED = 3;
+const OperandType = {
+  //  $$00    Large constant (0 to 65535)    2 bytes
+  Large: 0,
+
+  //  $$01    Small constant (0 to 255)      1 byte
+  Small: 1,
+
+  //  $$10    Variable                       1 byte
+  Variable: 2,
+
+  //  $$11    Omitted altogether             0 bytes
+  Omitted: 3,
+} as const;
 
 const INSTRUCTION_FORM_LONG = 0;
 const INSTRUCTION_FORM_SHORT = 1;
@@ -20,9 +28,35 @@ const INSTRUCTION_FORM_VARIABLE = 2;
 //const INSTRUCTION_FORM_EXTENDED = 3;
 
 export default class Game {
-  constructor(story_buffer, log_impl, screen, storage) {
+  private _pc: Address;
+  private _stack: Array<number>;
+  private _callstack: Array<CallFrame>;
+  private _op_pc: Address;
+
+  private _mem: Buffer;
+  /*private*/ _log: Log;
+  /*private*/ _screen: Screen;
+  private _storage: Storage;
+  private _quit: boolean;
+  /*private*/ _version: number;
+  private _highmem: number;
+  private _global_vars: number;
+  /*private*/ _abbrevs: number;
+  /*private*/ _object_table: number;
+  /*private*/ _dict: number;
+
+  private _routine_offset: number;
+  private _strings_offset: number;
+  private _game_objects: Array<GameObject>;
+
+  constructor(
+    story_buffer: Buffer,
+    log: Log,
+    screen: Screen,
+    storage: Storage,
+  ) {
     this._mem = story_buffer;
-    this._log = log_impl;
+    this._log = log;
     this._screen = screen;
     this._storage = storage;
     this._quit = false;
@@ -59,29 +93,34 @@ export default class Game {
     // every time we tokenise below.
   }
 
-  static fromSnapshot(snapshotBuffer, ...ctorArgs) {
+  static fromSnapshot(
+    snapshotBuffer: Buffer,
+    log: Log,
+    screen: Screen,
+    storage: Storage,
+    ) {
     let { mem, stack, callstack, pc } = Game.readSnapshotFromBuffer(
       snapshotBuffer
     );
-    let g = new Game(mem, ...ctorArgs);
+    let g = new Game(mem, log, screen, storage);
     g._stack = stack;
     g._callstack = callstack;
     g._pc = pc;
     return g;
   }
 
-  snapshotToBuffer() {
+  snapshotToBuffer(): Buffer {
     console.log(
       `at snapshot time, mem is length ${this._mem.length}, and pc = ${this.pc}`
     );
-    const chunkHeader = (type, length) => {
+    const chunkHeader = (type: number, length: number): Buffer => {
       let b = Buffer.alloc(8);
       b.writeUInt32LE(type, 0);
       b.writeUInt32LE(length, 4);
       return b;
     };
 
-    let buffers = [];
+    let buffers: Array<Buffer> = [];
     buffers.push(chunkHeader(1, this._mem.length));
     buffers.push(this._mem);
 
@@ -101,8 +140,12 @@ export default class Game {
     return Buffer.concat(buffers);
   }
 
-  static readSnapshotFromBuffer(b) {
-    let mem, stack, callstack, pc;
+  static readSnapshotFromBuffer(b: Buffer) {
+    let mem: Buffer | null = null;
+    let stack: Array<number> | null = null;
+    let callstack: Array<CallFrame> | null = null;
+    let pc: number | null = null;
+
     let p = 0;
 
     let readChunk = () => {
@@ -113,7 +156,7 @@ export default class Game {
 
       switch (type) {
         case 1: // memory
-          mem = b.slice(p, p + length);
+          mem = Uint8Array.prototype.slice.call(b, p, p + length);
           break;
         case 2: // stack
           stack = JSON.parse(b.toString("utf8", p, p + length));
@@ -134,15 +177,43 @@ export default class Game {
     readChunk();
     readChunk();
 
+    let memToUse: Buffer;
+    if (mem === null) {
+      throw new Error("couldn't find memory chunk in snapshot");
+    } else {
+      memToUse = mem;
+    }
+
+    let stackToUse: Array<number>;
+    if (stack === null) {
+      throw new Error("couldn't find stack chunk in snapshot");
+    } else {
+      stackToUse = stack;
+    }
+
+    let callstackToUse: Array<CallFrame>;
+    if (callstack === null) {
+      throw new Error("couldn't find callstack chunk in snapshot");
+    } else {
+      callstackToUse = callstack;
+    }
+
+    let pcToUse: number;
+    if (pc === null) {
+      throw new Error("couldn't find registers chunk in snapshot");
+    } else {
+      pcToUse = pc;
+    }
+
     console.log(
-      `at snapshot time, mem is length ${mem.length}, and pc = ${pc}`
+      `at snapshot time, mem is length ${memToUse.length}, and pc = ${pcToUse}`
     );
 
     return {
-      mem,
-      stack,
-      callstack,
-      pc
+      mem: memToUse,
+      stack: stackToUse,
+      callstack: callstackToUse,
+      pc: pcToUse,
     };
   }
 
@@ -159,7 +230,7 @@ export default class Game {
 
   saveGame() {
     try {
-      this._storage.saveSnapshot(this, this._mem, this._stack, this._callstack);
+      this._storage.saveSnapshot(this);
       return true;
     } catch (e) {
       console.error(e);
@@ -180,7 +251,7 @@ export default class Game {
     }
   }
 
-  continueAfterUserInput(input_state, input) {
+  continueAfterUserInput(input_state: InputState, input: string) {
     // probably not fully necessary, but unwind back to the event loop before transfering
     // back to game code.
     let timeoutId = setTimeout(() => {
@@ -264,7 +335,7 @@ export default class Game {
     let op_pc = this.pc;
     let opcode = this.readByte();
 
-    let operandTypes = [];
+    let operandTypes: Array<number /* OperandType */> = [];
     let reallyVariable = false;
     let form;
 
@@ -284,7 +355,7 @@ export default class Game {
         let bits = this.readByte();
         for (let i = 0; i < 4; i++) {
           let optype = (bits >> ((3 - i) * 2)) & 0x03;
-          if (optype !== OPERAND_TYPE_OMITTED) {
+          if (optype !== OperandType.Omitted) {
             operandTypes.push(optype);
           } else {
             break;
@@ -297,7 +368,7 @@ export default class Game {
       form = INSTRUCTION_FORM_SHORT;
 
       let optype = (opcode & 0x30) >> 4;
-      if (optype !== OPERAND_TYPE_OMITTED) {
+      if (optype !== OperandType.Omitted) {
         operandTypes = [optype];
       }
 
@@ -308,24 +379,24 @@ export default class Game {
       form = INSTRUCTION_FORM_LONG;
 
       operandTypes.push(
-        (opcode & 0x40) === 0x40 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
+        (opcode & 0x40) === 0x40 ? OperandType.Variable : OperandType.Small
       );
       operandTypes.push(
-        (opcode & 0x20) === 0x20 ? OPERAND_TYPE_VARIABLE : OPERAND_TYPE_SMALL
+        (opcode & 0x20) === 0x20 ? OperandType.Variable : OperandType.Small
       );
 
       opcode = opcode & 0x1f;
     }
 
-    let operands = [];
+    let operands: Array<number> = [];
     for (let optype of operandTypes) {
-      if (optype === OPERAND_TYPE_LARGE) {
+      if (optype === OperandType.Large) {
         let op = this.readWord();
         operands.push(op);
-      } else if (optype === OPERAND_TYPE_SMALL) {
+      } else if (optype === OperandType.Small) {
         let o = this.readByte();
         operands.push(o);
-      } else if (optype === OPERAND_TYPE_VARIABLE) {
+      } else if (optype === OperandType.Variable) {
         let varnum = this.readByte();
         let varval = this.loadVariable(varnum);
         operands.push(varval);
@@ -375,7 +446,7 @@ export default class Game {
     op.impl(this, ...operands);
   }
 
-  unpackRoutineAddress(addr) {
+  unpackRoutineAddress(addr: Address) {
     if (this._version <= 3) {
       return 2 * addr;
     } else if (this._version <= 5) {
@@ -389,7 +460,7 @@ export default class Game {
     }
   }
 
-  unpackStringAddress(addr, _for_call) {
+  unpackStringAddress(addr: Address/*, _for_call*/) {
     if (this._version <= 3) {
       return 2 * addr;
     } else if (this._version <= 5) {
@@ -403,7 +474,7 @@ export default class Game {
     }
   }
 
-  getObject(objnum) {
+  getObject(objnum: number): GameObject | null {
     if (objnum === 0) {
       return null;
     }
@@ -422,24 +493,29 @@ export default class Game {
     return cached_obj;
   }
 
-  pushStack(v) {
+  pushStack(v: number): void {
     if (v === undefined || v === null) {
       throw new Error("bad value on push");
     }
     this._stack.push(v);
     this._log.debug(
-      `     after pushStack(${hex(v)}): ${this._stack.map(el => hex(el))}`
+      `     after pushStack(${hex(v)}): ${this._stack.map((el) => hex(el))}`
     );
   }
-  popStack() {
-    this._log.debug(`     before popStack: ${this._stack.map(el => hex(el))}`);
-    if (this._stack.length === 0) {
+  popStack(): number {
+    this._log.debug(
+      `     before popStack: ${this._stack.map((el) => hex(el))}`
+    );
+    const v = this._stack.pop();
+    if (v === undefined) {
       throw new Error("empty stack");
     }
-    return this._stack.pop();
+    return v;
   }
-  peekStack() {
-    this._log.debug(`     before peekStack: ${this._stack.map(el => hex(el))}`);
+  peekStack(): number {
+    this._log.debug(
+      `     before peekStack: ${this._stack.map((el) => hex(el))}`
+    );
     if (this._stack.length === 0) {
       throw new Error("empty stack");
     }
@@ -492,35 +568,35 @@ export default class Game {
     }
   }
 
-  readByte() {
+  readByte(): number {
     let rv = this.getByte(this._pc);
     this._pc++;
     return rv;
   }
-  readWord() {
+  readWord(): number {
     let rv = this.getWord(this._pc);
     this._pc += 2;
     return rv;
   }
-  readZString() {
+  readZString(): ZString {
     let rv = this.getZString(this._pc);
     this._pc += Math.floor((rv.length / 3) * 2);
     return rv;
   }
 
-  getByte(addr) {
+  getByte(addr: Address): number {
     if (addr < 0 || addr >= this._mem.length) {
       throw new Error("segfault");
     }
     return this._mem[addr];
   }
-  setByte(addr, b) {
+  setByte(addr: Address, b: number): void {
     if (addr < 0 || addr >= this._mem.length) {
       throw new Error("segfault");
     }
     this._mem[addr] = b;
   }
-  getWord(addr) {
+  getWord(addr: Address): number {
     if (addr < 0 || addr > this._mem.length) {
       throw new Error("segfault");
     }
@@ -528,7 +604,7 @@ export default class Game {
     let lb = this._mem[addr + 1];
     return ub * 256 + lb;
   }
-  setWord(addr, value) {
+  setWord(addr: Address, value: number): void {
     if (addr < 0 || addr > this._mem.length) {
       throw new Error("segfault");
     }
@@ -537,8 +613,8 @@ export default class Game {
     this._mem[addr + 0] = ub;
     this._mem[addr + 1] = lb;
   }
-  getZString(addr) {
-    let chars = [];
+  getZString(addr: Address): ZString {
+    let chars: Array<number> = [];
     while (true) {
       let w = this.getWord(addr);
       chars.push((w >> 10) & 0x1f, (w >> 5) & 0x1f, (w >> 0) & 0x1f);
@@ -549,10 +625,10 @@ export default class Game {
     }
     return chars;
   }
-  getLenZString(addr) {
+  getLenZString(addr: Address): ZString {
     let len = this.getByte(addr);
     addr++;
-    let chars = [];
+    let chars: Array<number> = [];
     while (len-- > 0) {
       let w = this.getWord(addr);
       chars.push((w >> 10) & 0x1f, (w >> 5) & 0x1f, (w >> 0) & 0x1f);
@@ -565,7 +641,7 @@ export default class Game {
     return chars;
   }
 
-  readBranchOffset() {
+  readBranchOffset(): [number, boolean] {
     let branchData = this.readByte();
     let off1 = branchData & 0x3f;
     let offset;
@@ -623,12 +699,12 @@ export default class Game {
       locals[ai] = args[ai];
     }
 
-    let new_frame = {
+    let new_frame: CallFrame = {
       method_pc: addr,
       return_pc: this._pc,
       return_value_location: rv_location,
       locals,
-      arg_count: args.length
+      arg_count: args.length,
     };
 
     if (addr === 0x676f) {
@@ -639,6 +715,9 @@ export default class Game {
   }
   returnFromRoutine(value) {
     let popped_frame = this._callstack.pop();
+    if (popped_frame === undefined) {
+      throw new Error("callstack empty in return");
+    }
     if (popped_frame.return_value_location !== null) {
       this.storeVariable(popped_frame.return_value_location, value);
     }
@@ -717,7 +796,7 @@ export default class Game {
 
     // chop it off at 6 characters (the max)
     text = text.slice(0, 6);
-    let zchars = [];
+    let zchars: Array<number> = [];
 
     for (let i = 0; i < text.length; i++) {
       /*
@@ -736,7 +815,7 @@ export default class Game {
       zchars.push(padding);
     }
 
-    let zwords = [];
+    let zwords: Array<number> = [];
 
     for (let i = 0; i < resolution; i++) {
       zwords.push(
@@ -777,7 +856,7 @@ export default class Game {
     }
   }
 
-  tokeniseText(textBuffer, length, from, parseBuffer, dict, flag) {
+  tokeniseText(textBuffer: Address, length, from, parseBuffer: Address, dict, flag) {
     let token_max, token_count;
 
     token_max = this.getByte(parseBuffer);
@@ -791,7 +870,7 @@ export default class Game {
     this.setByte(parseBuffer + 1, token_count + 1);
 
     // frotz decodes then encodes again.  not sure why.
-    let wordZChars = [];
+    let wordZChars: Array<string> = [];
     for (let i = 0; i < length; i++) {
       wordZChars.push(String.fromCharCode(this.getByte(textBuffer + from + i)));
     }
@@ -883,13 +962,13 @@ export default class Game {
     this.setByte(parsebuffer + 1, 0);
 
     let num_sep = this.getByte(this._dict);
-    let sep_zscii = [];
+    let sep_zscii: Array<number> = [];
     for (let i = 0; i < num_sep; i++) {
       sep_zscii.push(this.getByte(this._dict + 1 + i));
     }
 
     this._log.debug(
-      `sep_zscii = ${sep_zscii.map(ch => String.fromCharCode(ch))}`
+      `sep_zscii = ${sep_zscii.map((ch) => String.fromCharCode(ch))}`
     );
 
     function is_separator(c) {

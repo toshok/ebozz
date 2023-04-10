@@ -1,7 +1,14 @@
+import type Game from "./ebozz";
+import type { Address } from "./types";
 import zstringToAscii from "./zstringToAscii";
+import { hex } from "./debug-helpers";
 
 export default class GameObject {
-  constructor(state, objnum) {
+  private state: Game;
+  /*private*/ objnum: number;
+  private objaddr: Address;
+
+  constructor(state: Game, objnum: number) {
     this.state = state;
     this.objnum = objnum;
 
@@ -14,8 +21,8 @@ export default class GameObject {
 
   dumpPropData(entry) {
     let propDataPtr = this._propDataPtr(entry);
-    let propDataLen = GameObject._propDataLen(state, entry);
-    let data = [];
+    let propDataLen = GameObject._propDataLen(this.state, entry);
+    let data: Array<number> = [];
     for (let i = 0; i < propDataLen; i++) {
       data.push(this.state.getByte(propDataPtr + i));
     }
@@ -160,7 +167,7 @@ export default class GameObject {
     this.sibling = null;
 
     // if we're the first child, it's easy
-    if (parent.child.objnum == this.objnum) {
+    if (parent.child?.objnum == this.objnum) {
       parent.child = sibling;
       return;
     }

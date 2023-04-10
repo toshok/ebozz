@@ -7,9 +7,9 @@
     "ebozz-slack": "dist/slack.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel -d dist/ src/",
-    "lint": "eslint src/*.js",
+    "build": "tsc",
+    "build-babel": "babel -d dist/ src/",
+    "lint": "eslint src/**/*.ts",
     "ebozz": "node dist/console",
     "slackbot": "node dist/slack",
     "zork1": "node dist/console tests/zork1.dat",
@@ -24,9 +24,9 @@
     "test-zork3": "node dist/test-runner.js zork3",
     "test-wishbringer": "node dist/test-runner.js wishbringer",
     "test-hhg": "node dist/test-runner.js hitchhikers-guide",
-    "ziptest-r3": "node dist/test-runner.js ziptest-r40-s840613.z3",
-    "ziptest-r6y": "node dist/test-runner.js ziptest-r12-s890607.z6",
-    "ziptest-r6z": "node dist/test-runner.js ziptest-r40-s890619.z6"
+    "ziptest-r3": "node dist/console ziptest-r40-s840613.z3",
+    "ziptest-r6y": "node dist/console ziptest-r12-s890607.z6",
+    "ziptest-r6z": "node dist/console ziptest-r40-s890619.z6"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "ISC",
@@ -36,22 +36,25 @@
   },
   "dependencies": {
     "blessed": "^0.1.81",
-    "chalk": "^2.4.2",
-    "nopt": "^3.0.6",
-    "readline-sync": "^1.4.1",
-    "slackbots": "^1.2.0"
+    "chalk": "^5.2.0",
+    "nopt": "^7.1.0",
+    "readline-sync": "^1.4.10",
+    "slackbots": "^1.3.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.4.3",
-    "@babel/core": "^7.4.3",
-    "@babel/preset-env": "^7.4.3",
+    "@types/blessed": "^0.1.21",
+    "@types/chalk": "^2.2.0",
+    "@types/node": "^18.15.11",
+    "@types/nopt": "^3.0.29",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^4.2.0",
-    "eslint-plugin-import": "^2.17.2",
     "eslint-plugin-prettier": "^3.1.0",
     "husky": ">=1",
     "lint-staged": ">=8",
-    "prettier": "^1.17.0"
+    "prettier": "^1.17.0",
+    "typescript": "^5.0.4"
   },
   "husky": {
     "hooks": {

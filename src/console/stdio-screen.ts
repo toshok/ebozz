@@ -1,13 +1,17 @@
 import readline from "readline-sync";
 import chalk from "chalk";
+import Log from "../log";
+import type { InputState } from "../types";
+import { ScreenBase } from "../Screen"
+import type Game from "../ebozz";
 
 const TextStyles = {
   Roman: 0,
   ReverseVideo: 1,
   Bold: 2,
   Italic: 4,
-  FixedPitch: 8
-};
+  FixedPitch: 8,
+} as const;
 
 const Colors = {
   Current: 0,
@@ -20,17 +24,22 @@ const Colors = {
   Magenta: 7,
   Cyan: 8,
   White: 9,
-  Gray: 10
-};
+  Gray: 10,
+} as const;
 
 const BufferModes = {
   NotBuffered: 0,
-  Buffered: 1
-};
+  Buffered: 1,
+} as const;
 
-export default class StdioScreen {
-  constructor(log) {
-    this.log = log;
+export default class StdioScreen extends ScreenBase {
+  private textStyle: number;
+  private outputWindowId: number;
+  private bufferMode: number;
+  private colors: Record<number, { foreground: number; background: number }>;
+
+  constructor(log: Log) {
+    super(log, "StdioScreen")
     this.textStyle = TextStyles.Roman;
     this.outputWindowId = 0;
     this.bufferMode = BufferModes.Buffered;
@@ -38,12 +47,12 @@ export default class StdioScreen {
     this.colors = {
       0: {
         foreground: Colors.Default,
-        background: Colors.Default
-      }
+        background: Colors.Default,
+      },
     };
   }
 
-  getInputFromUser(game, input_state) {
+  getInputFromUser(game: Game, input_state: InputState) {
     let input = readline.question("");
     game.continueAfterUserInput(input_state, input);
   }
@@ -61,10 +70,10 @@ export default class StdioScreen {
     return str;
   }
 
-  applyColors(str) {
+  applyColors(str: string) {
     // background first
-    const getChalkAccessor = (color, bg) => {
-      const bgOrNot = (name, bg) => (bg ? `bg${name}` : name.toLowerCase());
+    const getChalkAccessor = (color: number, bg: boolean) => {
+      const bgOrNot = (name: string, bg: boolean) => (bg ? `bg${name}` : name.toLowerCase());
       switch (color) {
         case Colors.Black:
           return bgOrNot("Black", bg);
@@ -108,7 +117,7 @@ export default class StdioScreen {
     return str;
   }
 
-  print(game, str) {
+  print(game: Game, str: string) {
     if (this.outputWindowId !== 0) {
       return;
     }
@@ -117,49 +126,23 @@ export default class StdioScreen {
     process.stdout.write(str);
   }
 
-  splitWindow(game, lines) {
-    this.log.debug(`not implemented: console.js splitWindow(${lines})`);
-  }
-
-  setOutputWindow(game, windowId) {
+  setOutputWindow(game: Game, windowId: number) {
     this.outputWindowId = windowId;
   }
 
-  getOutputWindow(_game) {
+  getOutputWindow(_game: Game): number {
     return this.outputWindowId;
   }
 
-  clearWindow(game, windowId) {
-    this.log.debug(`not implemented: console.js clearWindow(${windowId})`);
-  }
-
-  clearLine(game, value) {
-    this.log.debug(`not implemented: console.js clearLine(${value})`);
-  }
-
-  setCursorPosition(game, line, column, windowId) {
-    this.log.debug(
-      `not implemented: console.js setCursorPosition(${line}, ${column}, ${windowId})`
-    );
-  }
-
-  hideCursor(game, windowId) {
-    this.log.debug(`not implemented: console.js hideCursor(${windowId})`);
-  }
-
-  showCursor(game, windowId) {
-    this.log.debug(`not implemented: console.js showCursor(${windowId})`);
-  }
-
-  setBufferMode(game, mode) {
+  setBufferMode(game: Game, mode: number) {
     this.bufferMode = mode;
   }
 
-  setTextStyle(game, style) {
+  setTextStyle(game: Game, style: number) {
     this.textStyle = style;
   }
 
-  setTextColors(game, windowId, foreground, background) {
+  setTextColors(game: Game, windowId: number, foreground: number, background: number) {
     let newColors = { foreground, background };
     if (newColors.foreground === Colors.Current) {
       newColors.foreground = this.colors[windowId].foreground;
@@ -168,23 +151,5 @@ export default class StdioScreen {
       newColors.background = this.colors[windowId].background;
     }
     this.colors[windowId] = newColors;
-  }
-
-  enableOutputStream(game, streamId, table, width) {
-    this.log.debug(
-      `not implemented: console.js enableOutputStream(${streamId}, ${table}, ${width})`
-    );
-  }
-
-  disableOutputStream(game, streamId, table, width) {
-    this.log.debug(
-      `not implemented: console.js disableOutputStream(${streamId}, ${table}, ${width})`
-    );
-  }
-
-  selectInputStream(game, streamId) {
-    this.log.debug(
-      `not implemented: console.js selectInputStream(${streamId})`
-    );
   }
 }

@@ -6,7 +6,7 @@ import StdioScreen from "./stdio-screen";
 import { dumpHeader, dumpDictionary, dumpObjectTable } from "../debug-helpers";
 
 import * as fs from "fs";
-import nopt from "nopt";
+import * as nopt from "nopt";
 
 let knownOpts = {
   debug: Boolean,
@@ -14,7 +14,7 @@ let knownOpts = {
   header: Boolean,
   objectTree: Boolean,
   dict: Boolean,
-  screen: ["blessed", "stdio"]
+  screen: ["blessed", "stdio"],
 };
 let shorthandOpts = {
   d: ["--debug"],
@@ -22,7 +22,7 @@ let shorthandOpts = {
   h: ["--header"],
   o: ["--objectTree"],
   t: ["--dict"],
-  dump: ["--header", "--objectTree", "--dict", "-n"]
+  dump: ["--header", "--objectTree", "--dict", "-n"],
 };
 
 let parsed = nopt(knownOpts, shorthandOpts, process.argv, 2);
@@ -48,14 +48,14 @@ if (parsed.screen === "blessed") {
 let storage = {
   saveSnapshot(game) {
     fs.writeFileSync("snapshot.dat", game.snapshotToBuffer(), {
-      encoding: "binary"
+      encoding: "binary",
     });
   },
 
   loadSnapshot(_game) {
     let f = fs.readFileSync("snapshot.dat");
     return Game.readSnapshotFromBuffer(Buffer.from(f.buffer));
-  }
+  },
 };
 
 let game = new Game(b, log, screen, storage);

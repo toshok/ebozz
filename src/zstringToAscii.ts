@@ -1,14 +1,21 @@
+import { ZString } from "./types";
+import Game from "./ebozz";
+
 let alphabet_table = [
   /* A0 */ "abcdefghijklmnopqrstuvwxyz",
   /* A1 */ "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-  /* A2 */ " \n0123456789.,!?_#'\"/\\-:()"
+  /* A2 */ " \n0123456789.,!?_#'\"/\\-:()",
 ];
 
-export default function zstringToAscii(s, zstr, _expand) {
+export default function zstringToAscii(
+  s: Game,
+  zstr: ZString,
+  _expand: boolean
+): string {
   // various state things, like alphabet
   let alphabet = 0;
 
-  function shiftAlphabet(stype) {
+  function shiftAlphabet(stype: number) {
     if (stype === 4) {
       alphabet = 1;
     } else if (stype === 5) {
@@ -18,7 +25,7 @@ export default function zstringToAscii(s, zstr, _expand) {
     }
   }
 
-  let rv = [];
+  let rv: Array<string> = [];
   for (let i = 0; i < zstr.length; i++) {
     let z = zstr[i];
     if (z < 6) {
@@ -32,7 +39,7 @@ export default function zstringToAscii(s, zstr, _expand) {
           let x = zstr[++i];
           let entry = 32 * (z - 1) + x;
           let abbrev_addr = s.getWord(s._abbrevs + entry * 2) * 2;
-          rv.push(...zstringToAscii(s, s.getZString(abbrev_addr), false));
+          rv.push(zstringToAscii(s, s.getZString(abbrev_addr), false));
           break;
         }
         case 4:

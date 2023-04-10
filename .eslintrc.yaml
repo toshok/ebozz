@@ -1,21 +1,19 @@
 ---
-env:
-  es6: true
-  browser: true
-extends:
-  - prettier
-  - plugin:import/errors
-  - plugin:import/warnings
-  - plugin:prettier/recommended
-parserOptions:
-  ecmaVersion: 2017
-  sourceType: module
+  #extends:
+  #  - eslint:recommended
+  #  - 'plugin:@typescript-eslint/recommended'
+  #- prettier
+  #- plugin:prettier/recommended
+parser: '@typescript-eslint/parser'
+plugins:
+  - '@typescript-eslint'
+root: true
 rules:
   curly:
     - error
     - "all"
-  prettier/prettier:
-    - error
+  #prettier/prettier:
+  #  - error
   no-unused-vars:
     - error
     - argsIgnorePattern: "^_"

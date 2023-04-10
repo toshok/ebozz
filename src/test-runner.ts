@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import * as fs from "fs";
+
 import Log from "./log";
 import Game from "./ebozz";
-
-import * as fs from "fs";
+import { ScreenBase } from "./Screen";
+import { InputState, Storage } from "./types";
 
 let gameName = process.argv[2];
 
@@ -23,33 +25,45 @@ function getNextLine() {
   return line;
 }
 
-let log = new Log(false);
-let game = new Game(
-  fs.readFileSync(gameFile),
-  log,
-  input_state => {
+class TestRunnerScreen extends ScreenBase {
+  constructor(log: Log) {
+    super(log, "TestRunnerScreen");
+  }
+
+  getInputFromUser(game: Game, input_state: InputState) {
     let input = getNextLine();
     if (!input) {
       process.exit(0);
     }
     process.stdout.write(input + "\n");
     game.continueAfterUserInput(input_state, input);
-  },
-  str => {
+  }
+
+  print(game: Game, str: string) {
     process.stdout.write(str);
   }
-  /*
-  () => {
+}
+
+class TestRunnerStorage implements Storage {
+  saveSnapshot(game: Game) {
     fs.writeFileSync("snapshot.dat", game.snapshotToBuffer(), {
-      encoding: "binary"
+      encoding: "binary",
     });
-  },
-  () => {
+  }
+
+  loadSnapshot(game: Game) {
     let f = fs.readFileSync("snapshot.dat");
     let b = Buffer.from(f.buffer);
     return Game.readSnapshotFromBuffer(Buffer.from(f.buffer));
   }
-  */
+}
+
+let log = new Log(false);
+let game = new Game(
+  fs.readFileSync(gameFile),
+  log,
+  new TestRunnerScreen(log),
+  new TestRunnerStorage()
 );
 
 game.execute();

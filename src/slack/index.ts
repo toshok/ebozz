@@ -4,6 +4,8 @@ import * as fs from "fs";
 import * as path from "path";
 import Game from "../ebozz";
 import Log from "../log";
+import { InputState, SnapshotData } from "../types";
+import { ScreenBase } from "../Screen";
 
 const BOT_NAME = "Ebozz";
 const CHANNEL_NAME = "ebozz-debug";
@@ -11,22 +13,22 @@ const CHANNEL_NAME = "ebozz-debug";
 const GAMES = {
   zork1: {
     name: "Zork I: The Great Underground Empire",
-    path: "./tests/zork1.dat"
+    path: "./tests/zork1.dat",
   },
   zork2: { name: "Zork II: The Wizard of Frobozz", path: "./tests/zork2.dat" },
   zork3: { name: "Zork III: The Dungeon Master", path: "./tests/zork3.dat" },
   hitchhikers: {
     name: "The Hitchhiker's Guide To The Galaxy",
-    path: "./tests/hitchhikersguide.dat"
+    path: "./tests/hitchhikersguide.dat",
   },
   wishbringer: {
     name: "Wishbringer (doesn't work currently)",
-    path: "./tests/wishbringer.dat"
+    path: "./tests/wishbringer.dat",
   },
   trinity: {
     name: "Trinity (doesn't work currently)",
-    path: "./tests/trinity.dat"
-  }
+    path: "./tests/trinity.dat",
+  },
 };
 
 const USAGE = `commands are:
@@ -37,16 +39,17 @@ const USAGE = `commands are:
 *help*: prints this
 `;
 
-class Storage {
-  constructor(rootDir) {
+class BotStorage {
+  private rootDir: string;
+  constructor(rootDir: string) {
     this.rootDir = rootDir;
   }
 
-  directoryForChannel(channelId) {
+  directoryForChannel(channelId: string) {
     return path.join(this.rootDir, channelId);
   }
 
-  ensureDirectoryForChannel(channelId) {
+  ensureDirectoryForChannel(channelId: string) {
     let targetDir = this.directoryForChannel(channelId);
     try {
       fs.mkdirSync(targetDir, { recursive: true });
@@ -59,7 +62,12 @@ class Storage {
     }
   }
 
-  gameWaitingForInput(channelId, gameId, inputState, snapshot) {
+  gameWaitingForInput(
+    channelId: string,
+    gameId: string,
+    inputState: InputState,
+    snapshot: Buffer
+  ) {
     let targetDir = this.ensureDirectoryForChannel(channelId);
     let gameIdPath = path.join(targetDir, "gameId");
     let inputStatePath = path.join(targetDir, "inputState");
@@ -67,12 +75,12 @@ class Storage {
 
     fs.writeFileSync(gameIdPath, gameId, { encoding: "utf8" });
     fs.writeFileSync(inputStatePath, JSON.stringify(inputState), {
-      encoding: "utf8"
+      encoding: "utf8",
     });
     fs.writeFileSync(snapshotPath, snapshot, { encoding: "binary" });
   }
 
-  gameStoppedInChannel(channelId) {
+  gameStoppedInChannel(channelId: string) {
     // this should rimraf the directory
     let targetDir = this.directoryForChannel(channelId);
     let gameIdPath = path.join(targetDir, "gameId");
@@ -92,7 +100,7 @@ class Storage {
     } catch (e) {}
   }
 
-  stateForChannel(channelId) {
+  stateForChannel(channelId: string) {
     let targetDir = this.directoryForChannel(channelId);
     let gameIdPath = path.join(targetDir, "gameId");
     let inputStatePath = path.join(targetDir, "inputState");
@@ -111,29 +119,83 @@ class Storage {
   }
 }
 
+class BotScreen extends ScreenBase {
+  private bot: EbozzBot;
+  private storage: BotStorage;
+  private output_buffer: string;
+  private channelId: string;
+  private gameId: string;
+
+  constructor(
+    log: Log,
+    bot: EbozzBot,
+    storage: BotStorage,
+    channelId: string,
+    gameId: string
+  ) {
+    super(log, "EbozzBotScreen");
+    this.bot = bot;
+    this.storage = storage;
+    this.channelId = channelId;
+    this.gameId = gameId;
+    this.output_buffer = "";
+  }
+
+  // game suspended waiting for user input
+  getInputFromUser(game: Game, input_state: InputState) {
+    // console.log(`posting ${output_buffer}`);
+    this.bot.postMessageToChannel(this.output_buffer);
+    this.output_buffer = "";
+    // console.log("setting input_state to", input_state);
+    // console.log("and waiting until we get user input");
+    this.storage.gameWaitingForInput(
+      this.channelId,
+      this.gameId,
+      input_state,
+      game.snapshotToBuffer()
+    );
+  }
+
+  // output callback
+  print(game: Game, str: string) {
+    this.output_buffer += str;
+  }
+}
+
 function saveNotSupported() {
   throw new Error("no save support in slackbot.");
 }
 
+function loadNotSupported(): SnapshotData {
+  throw new Error("no load support in slackbot.");
+}
+
 class EbozzBot {
-  constructor(token) {
+  private bot: Bot;
+  private user: any; // XXX
+  private storage: BotStorage;
+
+  constructor(token: string) {
     this.bot = new Bot({ name: BOT_NAME, token });
-    this.storage = new Storage(`./slackbot-storage/${token}`);
+    this.storage = new BotStorage(`./slackbot-storage/${token}`);
   }
 
-  debugChannel(msg) {
+  debugChannel(msg: string) {
     this.bot.postMessageToChannel(CHANNEL_NAME, `[debug] ${msg}`);
   }
 
-  run() {
-    let output_buffer = "";
-    //    let current_input_state;
+  postMessageToChannel(msg: string) {
+    this.bot.postMessageToChannel(CHANNEL_NAME, msg);
+  }
 
+  run() {
     this.bot.on("start", () => {
       this.debugChannel("starting up");
-      this.user = this.bot.users.filter(user => user.real_name === BOT_NAME)[0];
+      this.user = this.bot.users.filter(
+        (user) => user.real_name === BOT_NAME
+      )[0];
 
-      this.bot.on("message", message => {
+      this.bot.on("message", (message) => {
         if (
           !this.isChatMessage(message) ||
           !this.isChannelConversation(message) ||
@@ -146,7 +208,7 @@ class EbozzBot {
         this.bot.channels = undefined; // XXX ugh?
         this.bot.getChannels().then(({ channels }) => {
           try {
-            let channelName = channels.find(c => c.id === channelId).name;
+            let channelName = channels.find((c) => c.id === channelId).name;
             let channelState = this.storage.stateForChannel(channelId);
 
             if (this.isAtMe(message)) {
@@ -185,31 +247,15 @@ class EbozzBot {
                   `starting game ${gameId} in channel ${channelName}`
                 );
 
+                let log = new Log(false);
                 let game = new Game(
                   fs.readFileSync(GAMES[gameId].path),
-                  new Log(false),
-                  // game suspended waiting for user input
-                  input_state => {
-                    // console.log(`posting ${output_buffer}`);
-                    this.bot.postMessageToChannel(channelName, output_buffer);
-                    output_buffer = "";
-                    // console.log("setting input_state to", input_state);
-                    // console.log("and waiting until we get user input");
-                    this.storage.gameWaitingForInput(
-                      channelId,
-                      gameId,
-                      input_state,
-                      game.snapshotToBuffer()
-                    );
-                  },
-                  // output callback
-                  str => {
-                    output_buffer += str;
-                  },
-
-                  // save/restore callbacks
-                  saveNotSupported,
-                  saveNotSupported
+                  log,
+                  new BotScreen(log, this, this.storage, channelId, gameId),
+                  {
+                    saveSnapshot: saveNotSupported,
+                    loadSnapshot: loadNotSupported,
+                  }
                 );
 
                 game.execute();
@@ -231,31 +277,15 @@ class EbozzBot {
                   `restarting game ${gameId} in channel ${channelName}`
                 );
 
+                let log = new Log(false);
                 let game = new Game(
                   fs.readFileSync(GAMES[gameId].path),
-                  new Log(false),
-                  // game suspended waiting for user input
-                  input_state => {
-                    // console.log(`posting ${output_buffer}`);
-                    this.bot.postMessageToChannel(channelName, output_buffer);
-                    output_buffer = "";
-                    // console.log("setting input_state to", input_state);
-                    // console.log("and waiting until we get user input");
-                    this.storage.gameWaitingForInput(
-                      channelId,
-                      gameId,
-                      input_state,
-                      game.snapshotToBuffer()
-                    );
-                  },
-                  // output callback
-                  str => {
-                    output_buffer += str;
-                  },
-
-                  // save/restore callbacks
-                  saveNotSupported,
-                  saveNotSupported
+                  log,
+                  new BotScreen(log, this, this.storage, channelId, gameId),
+                  {
+                    saveSnapshot: saveNotSupported,
+                    loadSnapshot: loadNotSupported,
+                  }
                 );
 
                 game.execute();
@@ -315,31 +345,15 @@ class EbozzBot {
               );
 
               if (inputState) {
+                let log = new Log(false);
                 let game = Game.fromSnapshot(
                   snapshot,
-                  new Log(false),
-                  // game suspended waiting for user input
-                  input_state => {
-                    // console.log(`posting ${output_buffer}`);
-                    this.bot.postMessageToChannel(channelName, output_buffer);
-                    output_buffer = "";
-                    // console.log("setting input_state to", input_state);
-                    // console.log("and waiting until we get user input");
-                    this.storage.gameWaitingForInput(
-                      channelId,
-                      gameId,
-                      input_state,
-                      game.snapshotToBuffer()
-                    );
-                  },
-                  // output callback
-                  str => {
-                    output_buffer += str;
-                  },
-
-                  // save/restore callbacks
-                  saveNotSupported,
-                  saveNotSupported
+                  log,
+                  new BotScreen(log, this, this.storage, channelId, gameId),
+                  {
+                    saveSnapshot: saveNotSupported,
+                    loadSnapshot: loadNotSupported,
+                  }
                 );
 
                 game.continueAfterUserInput(
@@ -385,5 +399,5 @@ class EbozzBot {
   }
 }
 
-let bot = new EbozzBot(process.env.EBOZZ_SLACK_TOKEN);
+let bot = new EbozzBot(process.env.EBOZZ_SLACK_TOKEN || "");
 bot.run();
