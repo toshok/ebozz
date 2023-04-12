@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "format": "prettier -w package.json src/**/*.ts",
+    "format": "prettier -w package.json src/**",
     "lint": "eslint src/**/*.ts",
     "ebozz": "node dist/console",
     "slackbot": "node dist/slack",
