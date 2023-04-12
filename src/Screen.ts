@@ -194,7 +194,7 @@ export class ScreenBase implements Screen {
     table: number,
     width: number
   ) {
-    this.log.debug(
+    this.log.error(
       `not implemented: ${this.id} enableOutputStream streamId=${streamId} table=${table} width=${width}`
     );
   }
@@ -205,13 +205,13 @@ export class ScreenBase implements Screen {
     table: number,
     width: number
   ) {
-    this.log.debug(
+    this.log.error(
       `not implemented: ${this.id} disableOutputStream streamId=${streamId} table=${table} width=${width}`
     );
   }
 
   selectInputStream(_game: Game, streamId: number) {
-    this.log.debug(
+    this.log.error(
       `not implemented: ${this.id} selectInputStream streamId=${streamId}`
     );
   }

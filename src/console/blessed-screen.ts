@@ -149,15 +149,35 @@ export default class BlessedScreen extends ScreenBase {
     this.screen.render();
   }
 
-  getInputFromUser(_game: Game, _input_state: InputState) {
+  getInputFromUser(game: Game, input_state: InputState) {
     this.log.debug(`BlessedScreen.getInputFromUser`);
 
+    const outputWindow = this.windows[this.outputWindow];
+
     // the prompt might be buffered.  display that and .. add a cursor someplace
-    this.windows[this.outputWindow].flushBuffer();
-    /*
-    let input = readline.question("");
-    game.continueAfterUserInput(input_state, input);
-    */
+    outputWindow.flushBuffer();
+
+    const screenLines = outputWindow.box.getScreenLines();
+    let text = blessed.textbox({
+      parent: this.screen,
+      top: outputWindow.top + screenLines.length - 1,
+      left: screenLines[screenLines.length - 1].length + 1,
+      width: this.screen.cols - screenLines[screenLines.length - 1].length,
+      height: 1,
+      input: true,
+      inputOnFocus: true,
+    });
+    text.on("submit", () => {
+      outputWindow.box.setLine(screenLines.length - 1, screenLines[screenLines.length - 1] + " " + text.getValue());
+      game.continueAfterUserInput(input_state, text.getValue());
+      text.destroy();
+    });
+    text.on("cancel", () => {
+      text.focus();
+    });
+    text.enableKeys();
+    text.focus();
+    this.screen.render();
   }
 
   getKeyFromUser(game: Game, input_state: InputState) {

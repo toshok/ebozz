@@ -342,6 +342,7 @@ export default class Game {
         this._op_pc = this._pc;
         this.executeInstruction();
       }
+      process.exit(0);
     } catch (e) {
       if (e instanceof SuspendForUserInput) {
         // use setTimeout so we fully unwind before calling the input_cb
