@@ -27,7 +27,8 @@
     "test-hhg": "node dist/test-runner.js hitchhikers-guide",
     "ziptest-r3": "node dist/console tests/ziptest-r40-s840613.z3",
     "ziptest-r6y": "node dist/console tests/ziptest-r12-s890607.z6",
-    "ziptest-r6z": "node dist/console tests/ziptest-r13-s890619.z6"
+    "ziptest-r6z": "node dist/console tests/ziptest-r13-s890619.z6",
+    "prepare": "husky install"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "ISC",
@@ -53,15 +54,10 @@
     "eslint": "^8.38.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "husky": ">=1",
+    "husky": "^8.0.3",
     "lint-staged": "^13.2.1",
     "prettier": "^2.8.7",
     "typescript": "^5.0.4"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   },
   "lint-staged": {
     "*.ts": [
