@@ -571,7 +571,12 @@ function print_ret(s: Game) {
 }
 
 // screen-related opcodes
-function set_color(s: Game, foreground: number, background: number, window: number) {
+function set_color(
+  s: Game,
+  foreground: number,
+  background: number,
+  window: number
+) {
   if (s._version <= 5) {
     window = 0;
   }
@@ -664,7 +669,12 @@ function buffer_mode(s: Game, flag: number) {
   s._screen.setBufferMode(s, flag);
 }
 
-function output_stream(s: Game, streamNum: number, table: number, width: number) {
+function output_stream(
+  s: Game,
+  streamNum: number,
+  table: number,
+  width: number
+) {
   let streamNumber = toI16(streamNum);
   if (streamNumber === 0) {
     // why emit this opcode at all?
@@ -707,7 +717,13 @@ function quit(s: Game) {
   s._quit = true;
 }
 
-function sread(s: Game, textBuffer: number, parseBuffer: number, time: number, routine: Address) {
+function sread(
+  s: Game,
+  textBuffer: number,
+  parseBuffer: number,
+  time: number,
+  routine: Address
+) {
   let resultVar = 0;
 
   if (s._version >= 5) {
@@ -749,7 +765,13 @@ function random(s: Game, range: number) {
   }
 }
 
-function sound_effect(s: Game, number: number, _effect: number, _volume: number, _routine: Address) {
+function sound_effect(
+  s: Game,
+  number: number,
+  _effect: number,
+  _volume: number,
+  _routine: Address
+) {
   s._log.warn(`sound_effect ${number} -- not implemented`);
 }
 function read_char(s: Game, _dev: number, _time: number, _routine: Address) {
@@ -759,7 +781,13 @@ function read_char(s: Game, _dev: number, _time: number, _routine: Address) {
     resultVar,
   });
 }
-function scan_table(s: Game, x: number, table: number, len: number, form = 0x82) {
+function scan_table(
+  s: Game,
+  x: number,
+  table: number,
+  len: number,
+  form = 0x82
+) {
   let resultVar = s.readByte();
   let [offset, condfalse] = s.readBranchOffset();
 
@@ -787,11 +815,23 @@ function scan_table(s: Game, x: number, table: number, len: number, form = 0x82)
   // don't branch
 }
 
-function tokenise(s: Game, text: number, tokenBuffer: number, dict = 0, flag = 0) {
+function tokenise(
+  s: Game,
+  text: number,
+  tokenBuffer: number,
+  dict = 0,
+  flag = 0
+) {
   s.tokeniseLine(text, tokenBuffer, dict, flag != 0);
 }
 
-function print_table(s: Game, zscii_text: number, width: number, height: number, skip: number) {
+function print_table(
+  s: Game,
+  zscii_text: number,
+  width: number,
+  height: number,
+  skip: number
+) {
   s._log.debug("print_table");
   if (width) {
     s._log.debug(`width = ${width}`);

@@ -29,13 +29,13 @@ export type SnapshotData = {
 
 export interface Storage {
   saveSnapshot(game: Game): void;
-  loadSnapshot(    game: Game  ): SnapshotData;
+  loadSnapshot(game: Game): SnapshotData;
 }
 
 export interface CallFrame {
-    method_pc: number;
-    return_pc: number;
-    return_value_location: number | null; // why can this be null?
-    locals: Array<number>;
-    arg_count: number;
+  method_pc: number;
+  return_pc: number;
+  return_value_location: number | null; // why can this be null?
+  locals: Array<number>;
+  arg_count: number;
 }

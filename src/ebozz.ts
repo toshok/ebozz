@@ -1,4 +1,10 @@
-import type { CallFrame, Address, ZString, Storage, InputState } from "./types.js";
+import type {
+  CallFrame,
+  Address,
+  ZString,
+  Storage,
+  InputState,
+} from "./types.js";
 import type { Screen } from "./Screen.js";
 import GameObject from "./GameObject.js";
 import SuspendForUserInput from "./SuspendForUserInput.js";
@@ -53,7 +59,7 @@ export default class Game {
     story_buffer: Buffer,
     log: Log,
     screen: Screen,
-    storage: Storage,
+    storage: Storage
   ) {
     this._mem = story_buffer;
     this._log = log;
@@ -92,7 +98,6 @@ export default class Game {
       this.setByte(0x01, 0xff);
     }
 
-
     // get the word separators out of the dictionary here so we don't have to do it
     // every time we tokenise below.
   }
@@ -101,11 +106,10 @@ export default class Game {
     snapshotBuffer: Buffer,
     log: Log,
     screen: Screen,
-    storage: Storage,
-    ) {
-    let { mem, stack, callstack, pc } = Game.readSnapshotFromBuffer(
-      snapshotBuffer
-    );
+    storage: Storage
+  ) {
+    let { mem, stack, callstack, pc } =
+      Game.readSnapshotFromBuffer(snapshotBuffer);
     let g = new Game(mem, log, screen, storage);
     g._stack = stack;
     g._callstack = callstack;
@@ -493,7 +497,7 @@ export default class Game {
     }
   }
 
-  unpackStringAddress(addr: Address/*, _for_call*/) {
+  unpackStringAddress(addr: Address /*, _for_call*/) {
     if (this._version <= 3) {
       return 2 * addr;
     } else if (this._version <= 5) {
@@ -569,9 +573,7 @@ export default class Game {
       let cur_frame = this._callstack[this._callstack.length - 1];
       if (v > cur_frame.locals.length) {
         throw new Error(
-          `local ${v} out of range.  there are ${
-            cur_frame.locals.length
-          } locals`
+          `local ${v} out of range.  there are ${cur_frame.locals.length} locals`
         );
       }
       // console.log(`variable ${v - 1} = ${value}`);
@@ -713,7 +715,11 @@ export default class Game {
     }
   }
 
-  callRoutine(addr: Address, rv_location: number | null, ...args: Array<number>) {
+  callRoutine(
+    addr: Address,
+    rv_location: number | null,
+    ...args: Array<number>
+  ) {
     // initialize locals
     let num_locals = this.getByte(addr++);
     let locals = Array(num_locals);
@@ -862,7 +868,12 @@ export default class Game {
     return zwords;
   }
 
-  tokenise_word(inputbuffer: string, start: number, end: number, parsebuffer: number) {
+  tokenise_word(
+    inputbuffer: string,
+    start: number,
+    end: number,
+    parsebuffer: number
+  ) {
     // the parse buffer contains as the first two bytes
     // [0]: max tokens
     // [1]: count tokens
@@ -890,7 +901,14 @@ export default class Game {
     }
   }
 
-  tokeniseText(textBuffer: Address, length: number, from: number, parseBuffer: Address, dict: number, flag: boolean) {
+  tokeniseText(
+    textBuffer: Address,
+    length: number,
+    from: number,
+    parseBuffer: Address,
+    dict: number,
+    flag: boolean
+  ) {
     let token_max, token_count;
 
     token_max = this.getByte(parseBuffer);
@@ -919,7 +937,12 @@ export default class Game {
     }
   }
 
-  tokeniseLine(textBuffer: number, parseBuffer: number, dict: number, flag: boolean) {
+  tokeniseLine(
+    textBuffer: number,
+    parseBuffer: number,
+    dict: number,
+    flag: boolean
+  ) {
     // default to the standard dictionary
     if (dict === 0) {
       dict = this._dict;

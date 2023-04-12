@@ -72,7 +72,7 @@ class BotStorage {
   }
 
   ensureDirectoryForChannel(channelId: string) {
-    let targetDir = this.directoryForChannel(channelId);
+    const targetDir = this.directoryForChannel(channelId);
     try {
       fs.mkdirSync(targetDir, { recursive: true });
       return targetDir;
@@ -90,10 +90,10 @@ class BotStorage {
     inputState: InputState,
     snapshot: Buffer
   ) {
-    let targetDir = this.ensureDirectoryForChannel(channelId);
-    let gameIdPath = path.join(targetDir, "gameId");
-    let inputStatePath = path.join(targetDir, "inputState");
-    let snapshotPath = path.join(targetDir, "snapshot.dat");
+    const targetDir = this.ensureDirectoryForChannel(channelId);
+    const gameIdPath = path.join(targetDir, "gameId");
+    const inputStatePath = path.join(targetDir, "inputState");
+    const snapshotPath = path.join(targetDir, "snapshot.dat");
 
     fs.writeFileSync(gameIdPath, gameId, { encoding: "utf8" });
     fs.writeFileSync(inputStatePath, JSON.stringify(inputState), {
@@ -104,10 +104,10 @@ class BotStorage {
 
   gameStoppedInChannel(channelId: string) {
     // this should rimraf the directory
-    let targetDir = this.directoryForChannel(channelId);
-    let gameIdPath = path.join(targetDir, "gameId");
-    let inputStatePath = path.join(targetDir, "inputState");
-    let snapshotPath = path.join(targetDir, "snapshot.dat");
+    const targetDir = this.directoryForChannel(channelId);
+    const gameIdPath = path.join(targetDir, "gameId");
+    const inputStatePath = path.join(targetDir, "inputState");
+    const snapshotPath = path.join(targetDir, "snapshot.dat");
 
     try {
       fs.unlinkSync(gameIdPath);
@@ -123,17 +123,17 @@ class BotStorage {
   }
 
   stateForChannel(channelId: string) {
-    let targetDir = this.directoryForChannel(channelId);
-    let gameIdPath = path.join(targetDir, "gameId");
-    let inputStatePath = path.join(targetDir, "inputState");
-    let snapshotPath = path.join(targetDir, "snapshot.dat");
+    const targetDir = this.directoryForChannel(channelId);
+    const gameIdPath = path.join(targetDir, "gameId");
+    const inputStatePath = path.join(targetDir, "inputState");
+    const snapshotPath = path.join(targetDir, "snapshot.dat");
 
     try {
-      let gameId = fs.readFileSync(gameIdPath, "utf8").toString();
-      let inputState = JSON.parse(
+      const gameId = fs.readFileSync(gameIdPath, "utf8").toString();
+      const inputState = JSON.parse(
         fs.readFileSync(inputStatePath, "utf8").toString()
       );
-      let snapshot = fs.readFileSync(snapshotPath);
+      const snapshot = fs.readFileSync(snapshotPath);
       return { gameId, inputState, snapshot };
     } catch (e) {
       return null;
@@ -226,18 +226,18 @@ class EbozzBot {
           return;
         }
 
-        let channelId = message.channel;
+        const channelId = message.channel;
         this.bot.channels = undefined; // XXX ugh?
         this.bot
           .getChannels()
           .then(({ channels }: { channels: Array<SlackChannel> }) => {
             try {
-              let channel = channels.find((c) => c.id === channelId);
+              const channel = channels.find((c) => c.id === channelId);
               if (!channel) {
                 throw new Error(`channel ${channelId} not found`);
               }
-              let channelName = channel.name;
-              let channelState = this.storage.stateForChannel(channelId);
+              const channelName = channel.name;
+              const channelState = this.storage.stateForChannel(channelId);
 
               if (this.isAtMe(message)) {
                 // meta commands:
@@ -246,14 +246,14 @@ class EbozzBot {
                 //  restart
                 //  quit
 
-                let atMe = `<@${this.user.id}>`;
-                let command = message.text.slice(atMe.length).trim();
+                const atMe = `<@${this.user.id}>`;
+                const command = message.text.slice(atMe.length).trim();
 
                 if (command == "games") {
                   // console.log(message);
                   let response = "Games available:\n";
-                  for (let id of Object.keys(GAMES).sort()) {
-                    let g = GAMES[id];
+                  for (const id of Object.keys(GAMES).sort()) {
+                    const g = GAMES[id];
                     response += `*${id}*: _${g.name}_\n`;
                   }
 
@@ -262,7 +262,7 @@ class EbozzBot {
                 }
 
                 if (command.startsWith("play ")) {
-                  let gameId = command.slice("play ".length).trim();
+                  const gameId = command.slice("play ".length).trim();
                   if (!GAMES[gameId]) {
                     this.bot.postMessageToChannel(
                       channelName,
@@ -275,8 +275,8 @@ class EbozzBot {
                     `starting game ${gameId} in channel ${channelName}`
                   );
 
-                  let log = new Log(false);
-                  let game = new Game(
+                  const log = new Log(false);
+                  const game = new Game(
                     fs.readFileSync(GAMES[gameId].path),
                     log,
                     new BotScreen(log, this, this.storage, channelId, gameId),
@@ -300,13 +300,13 @@ class EbozzBot {
                     return;
                   }
 
-                  let { gameId } = channelState;
+                  const { gameId } = channelState;
                   this.debugChannel(
                     `restarting game ${gameId} in channel ${channelName}`
                   );
 
-                  let log = new Log(false);
-                  let game = new Game(
+                  const log = new Log(false);
+                  const game = new Game(
                     fs.readFileSync(GAMES[gameId].path),
                     log,
                     new BotScreen(log, this, this.storage, channelId, gameId),
@@ -330,7 +330,7 @@ class EbozzBot {
                     return;
                   }
 
-                  let { gameId } = channelState;
+                  const { gameId } = channelState;
 
                   this.debugChannel(
                     `quitting game ${gameId} in channel ${channelName}`
@@ -349,7 +349,7 @@ class EbozzBot {
                   return;
                 }
 
-                let response = `unrecognized command ${command}.\n${USAGE}`;
+                const response = `unrecognized command ${command}.\n${USAGE}`;
                 this.bot.postMessageToChannel(channelName, response);
                 return;
               }
@@ -364,7 +364,7 @@ class EbozzBot {
                   return;
                 }
 
-                let { gameId, snapshot, inputState } = channelState;
+                const { gameId, snapshot, inputState } = channelState;
 
                 this.debugChannel(
                   `game command '${this.getGameCommandText(
@@ -373,8 +373,8 @@ class EbozzBot {
                 );
 
                 if (inputState) {
-                  let log = new Log(false);
-                  let game = Game.fromSnapshot(
+                  const log = new Log(false);
+                  const game = Game.fromSnapshot(
                     snapshot,
                     log,
                     new BotScreen(log, this, this.storage, channelId, gameId),
@@ -427,5 +427,5 @@ class EbozzBot {
   }
 }
 
-let bot = new EbozzBot(process.env.EBOZZ_SLACK_TOKEN || "");
+const bot = new EbozzBot(process.env.EBOZZ_SLACK_TOKEN || "");
 bot.run();

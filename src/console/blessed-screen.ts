@@ -1,6 +1,13 @@
 import blessed from "blessed";
 import Log from "../log.js";
-import { ScreenBase, ScreenSize, BufferMode, TextStyle, Color, colorToString } from "../Screen.js";
+import {
+  ScreenBase,
+  ScreenSize,
+  BufferMode,
+  TextStyle,
+  Color,
+  colorToString,
+} from "../Screen.js";
 import type Game from "../ebozz.js";
 import { InputState } from "../types.js";
 import { toI16 } from "../cast16.js";
@@ -57,8 +64,8 @@ class Window {
     const foreground = this.foreground;
     const background = this.background;
 
-    let fgColor = colorToString(foreground);
-    let bgColor = colorToString(background);
+    const fgColor = colorToString(foreground);
+    const bgColor = colorToString(background);
 
     let text = blessed.escape(str);
 
@@ -106,7 +113,7 @@ class Window {
     }
     this.clearBuffer();
   }
-};
+}
 
 export default class BlessedScreen extends ScreenBase {
   private screen: blessed.Widgets.Screen;
@@ -114,7 +121,7 @@ export default class BlessedScreen extends ScreenBase {
   private outputWindow: number;
 
   constructor(log: Log) {
-    super(log, "BlessedScreen")
+    super(log, "BlessedScreen");
     this.screen = blessed.screen({
       smartCSR: true,
       log: "blessed.log",
@@ -176,7 +183,10 @@ export default class BlessedScreen extends ScreenBase {
       this.screen.log(`paragraphs: ${JSON.stringify(paragraphs)}`);
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i];
-        if (outputWindow.textBuffer.length + paragraph.length <= this.screen.cols) {
+        if (
+          outputWindow.textBuffer.length + paragraph.length <=
+          this.screen.cols
+        ) {
           this.screen.log(`paragraph "${paragraph}" fits on current line`);
           // we don't need to wrap this paragraph.  style it and either buffer it (if it's the last paragraph) or output it.
           if (i === paragraphs.length - 1) {
@@ -185,25 +195,44 @@ export default class BlessedScreen extends ScreenBase {
               outputWindow.bufferText(paragraph);
             }
           } else {
-            this.screen.log(`logging paragraph "${outputWindow.styledBuffer + this.styleText(paragraph)}"`);
+            this.screen.log(
+              `logging paragraph "${
+                outputWindow.styledBuffer + this.styleText(paragraph)
+              }"`
+            );
             outputWindow.bufferText(paragraph);
             outputWindow.flushBuffer();
           }
         } else {
-          this.screen.log(`paragraph "${paragraph}" doesn't fit on current line`);
+          this.screen.log(
+            `paragraph "${paragraph}" doesn't fit on current line`
+          );
           // we need to wrap this paragraph
           let text = "";
           let startIdx = 0;
 
           while (startIdx < paragraph.length) {
-            const nextSpace = paragraph.indexOf(" ", paragraph[startIdx] === " " ? startIdx + 1 : startIdx);
-            const nextWord = nextSpace === -1 ? paragraph.substring(startIdx) : paragraph.substring(startIdx, nextSpace);
+            const nextSpace = paragraph.indexOf(
+              " ",
+              paragraph[startIdx] === " " ? startIdx + 1 : startIdx
+            );
+            const nextWord =
+              nextSpace === -1
+                ? paragraph.substring(startIdx)
+                : paragraph.substring(startIdx, nextSpace);
 
-            if (outputWindow.textBuffer.length + text.length + nextWord.length > this.screen.cols) {
-              this.screen.log(`logging wrapped line "${outputWindow.styledBuffer + this.styleText(text)}"`);
+            if (
+              outputWindow.textBuffer.length + text.length + nextWord.length >
+              this.screen.cols
+            ) {
+              this.screen.log(
+                `logging wrapped line "${
+                  outputWindow.styledBuffer + this.styleText(text)
+                }"`
+              );
               outputWindow.bufferText(text);
               outputWindow.flushBuffer();
-              this.screen.log(`resetting text to "${nextWord.trimStart()}"`)
+              this.screen.log(`resetting text to "${nextWord.trimStart()}"`);
               text = nextWord.trimStart();
             } else {
               text += nextWord;
@@ -231,9 +260,14 @@ export default class BlessedScreen extends ScreenBase {
     } else {
       // do we need to fetch the current line and overlay str on top of it before writing it back out? ugh...
       const prefix = " ".repeat(outputWindow.cursorPosCol);
-      const suffix = " ".repeat(this.screen.cols - outputWindow.cursorPosCol - str.length);
+      const suffix = " ".repeat(
+        this.screen.cols - outputWindow.cursorPosCol - str.length
+      );
 
-      outputWindow.box.setLine(outputWindow.cursorPosRow - 1, this.styleText(str));
+      outputWindow.box.setLine(
+        outputWindow.cursorPosRow - 1,
+        this.styleText(prefix + str + suffix)
+      );
     }
     this.screen.render();
   }
@@ -243,8 +277,8 @@ export default class BlessedScreen extends ScreenBase {
     const foreground = this.windows[this.outputWindow].foreground;
     const background = this.windows[this.outputWindow].background;
 
-    let fgColor = colorToString(foreground);
-    let bgColor = colorToString(background);
+    const fgColor = colorToString(foreground);
+    const bgColor = colorToString(background);
 
     let text = blessed.escape(str);
 
@@ -277,7 +311,9 @@ export default class BlessedScreen extends ScreenBase {
   }
 
   getOutputWindow(_game: Game) {
-    this.log.debug(`BlessedScreen.getOutputWindow -> windowId=${this.outputWindow}`);
+    this.log.debug(
+      `BlessedScreen.getOutputWindow -> windowId=${this.outputWindow}`
+    );
     return this.outputWindow;
   }
 
@@ -292,8 +328,12 @@ export default class BlessedScreen extends ScreenBase {
     }
 
     this.screen.log("window configuration:");
-    this.screen.log(`  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`);
-    this.screen.log(`  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`);
+    this.screen.log(
+      `  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`
+    );
+    this.screen.log(
+      `  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`
+    );
 
     this.screen.render();
   }
@@ -302,8 +342,12 @@ export default class BlessedScreen extends ScreenBase {
     this.windows[1].resize(0, this.screen.rows);
     this.windows[0].resize(this.screen.rows, 0);
     this.screen.log("window configuration:");
-    this.screen.log(`  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`);
-    this.screen.log(`  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`);
+    this.screen.log(
+      `  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`
+    );
+    this.screen.log(
+      `  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`
+    );
     this.screen.render();
   }
 
@@ -322,8 +366,15 @@ export default class BlessedScreen extends ScreenBase {
     this.screen.render();
   }
 
-  setCursorPosition(_game: Game, line: number, column: number, windowId: number): void {
-    this.log.debug(`BlessedScreen.setCursorPosition line=${line} column=${column} windowId=${windowId}`);
+  setCursorPosition(
+    _game: Game,
+    line: number,
+    column: number,
+    windowId: number
+  ): void {
+    this.log.debug(
+      `BlessedScreen.setCursorPosition line=${line} column=${column} windowId=${windowId}`
+    );
     this.windows[windowId].cursorPosRow = line;
     this.windows[windowId].cursorPosCol = column;
   }
@@ -333,8 +384,15 @@ export default class BlessedScreen extends ScreenBase {
     this.windows[this.outputWindow].textStyle = style;
   }
 
-  setTextColors(_game: Game, windowId: number, foreground: Color, background: Color) {
-    this.log.debug(`BlessedScreen.setTextColor windowId=${windowId} foreground=${foreground} background=${background}`);
+  setTextColors(
+    _game: Game,
+    windowId: number,
+    foreground: Color,
+    background: Color
+  ) {
+    this.log.debug(
+      `BlessedScreen.setTextColor windowId=${windowId} foreground=${foreground} background=${background}`
+    );
     this.windows[windowId].foreground = foreground;
     this.windows[windowId].background = background;
   }
@@ -347,5 +405,4 @@ export default class BlessedScreen extends ScreenBase {
   getSize(): ScreenSize {
     return { rows: this.screen.rows, cols: this.screen.cols };
   }
-
 }

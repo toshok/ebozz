@@ -2,7 +2,13 @@ import * as readline from "readline-sync";
 import chalk from "chalk";
 import Log from "../log.js";
 import type { InputState } from "../types.js";
-import { ScreenBase, Color, TextStyle, BufferMode, ScreenSize } from "../Screen.js"
+import {
+  ScreenBase,
+  Color,
+  TextStyle,
+  BufferMode,
+  ScreenSize,
+} from "../Screen.js";
 import type Game from "../ebozz.js";
 
 export default class StdioScreen extends ScreenBase {
@@ -12,7 +18,7 @@ export default class StdioScreen extends ScreenBase {
   private colors: Record<number, { foreground: Color; background: Color }>;
 
   constructor(log: Log) {
-    super(log, "StdioScreen")
+    super(log, "StdioScreen");
     this.textStyle = TextStyle.Roman;
     this.outputWindowId = 0;
     this.bufferMode = BufferMode.Buffered;
@@ -26,7 +32,7 @@ export default class StdioScreen extends ScreenBase {
   }
 
   getInputFromUser(game: Game, input_state: InputState) {
-    let input = readline.question("");
+    const input = readline.question("");
     game.continueAfterUserInput(input_state, input);
   }
 
@@ -47,13 +53,13 @@ export default class StdioScreen extends ScreenBase {
     const chalkedString = (str: string, color: number, bg: boolean) => {
       switch (color) {
         case Color.Black:
-          return bg ? chalk.bgBlack(str) : chalk.black(str)
+          return bg ? chalk.bgBlack(str) : chalk.black(str);
         case Color.Red:
           return bg ? chalk.bgRed(str) : chalk.red(str);
         case Color.Green:
           return bg ? chalk.bgGreen(str) : chalk.green(str);
         case Color.Yellow:
-          return bg ? chalk.bgYellow(str) : chalk.yellow(str);// bgOrNot("Yellow", bg);
+          return bg ? chalk.bgYellow(str) : chalk.yellow(str); // bgOrNot("Yellow", bg);
         case Color.Blue:
           return bg ? chalk.bgBlue(str) : chalk.blue(str);
         case Color.Magenta:
@@ -71,10 +77,18 @@ export default class StdioScreen extends ScreenBase {
     };
 
     if (this.colors[this.outputWindowId].background !== Color.Default) {
-      str = chalkedString(str, this.colors[this.outputWindowId].background, true)
+      str = chalkedString(
+        str,
+        this.colors[this.outputWindowId].background,
+        true
+      );
     }
     if (this.colors[this.outputWindowId].foreground !== Color.Default) {
-      str = chalkedString(str, this.colors[this.outputWindowId].foreground, false)
+      str = chalkedString(
+        str,
+        this.colors[this.outputWindowId].foreground,
+        false
+      );
     }
 
     return str;
@@ -105,8 +119,13 @@ export default class StdioScreen extends ScreenBase {
     this.textStyle = style;
   }
 
-  setTextColors(game: Game, windowId: number, foreground: number, background: number) {
-    let newColors = { foreground, background };
+  setTextColors(
+    game: Game,
+    windowId: number,
+    foreground: number,
+    background: number
+  ) {
+    const newColors = { foreground, background };
     if (newColors.foreground === Color.Current) {
       newColors.foreground = this.colors[windowId].foreground;
     }

@@ -26,7 +26,7 @@ export default class GameObject {
     for (let i = 0; i < propDataLen; i++) {
       data.push(this.state.getByte(propDataPtr + i));
     }
-    return data.map(el => hex(el)).join(" ");
+    return data.map((el) => hex(el)).join(" ");
   }
   dump(indent = 0) {
     let _indent = " . ".repeat(indent);
