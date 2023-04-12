@@ -33,7 +33,9 @@ function unimplementedOpcode(mnemonic: string) {
 }
 
 function nopcode() {
-  return opcode("nop", () => {});
+  return opcode("nop", () => {
+    /* do nothing */
+  });
 }
 
 function opcodeImpl(fn: OpcodeFn) {
@@ -42,19 +44,19 @@ function opcodeImpl(fn: OpcodeFn) {
 
 // branch opcodes
 function je(s: Game, a: number, b: number, c: number, d: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} je ${hex(a)} ${hex(b)} ${hex(c)} ${hex(
       d
     )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
   );
-  let cond =
+  const cond =
     a === b || (c !== undefined && a === c) || (d !== undefined && a === d);
   s.doBranch(cond, condfalse, offset);
 }
 
 function jl(s: Game, a: number, b: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jl ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
@@ -64,7 +66,7 @@ function jl(s: Game, a: number, b: number) {
 }
 
 function jg(s: Game, a: number, b: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jg ${hex(a)} ${hex(b)} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
@@ -74,24 +76,24 @@ function jg(s: Game, a: number, b: number) {
 }
 
 function jin(s: Game, obj1: number, obj2: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jin ${hex(obj1)} ${hex(obj2)} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
     )}`
   );
-  let o1 = s.getObject(obj1);
+  const o1 = s.getObject(obj1);
   if (o1 === null) {
     s._log.error("child object is null in jin");
     s.doBranch(false, condfalse, offset);
   } else {
-    let parentObjNum = o1.parent ? o1.parent.objnum : 0;
+    const parentObjNum = o1.parent ? o1.parent.objnum : 0;
     s.doBranch(parentObjNum === obj2, condfalse, offset);
   }
 }
 
 function jz(s: Game, a: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} jz ${hex(a)} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
   );
@@ -109,7 +111,7 @@ function jump(s: Game, addr: number) {
 }
 
 function test(s: Game, bitmap: number, flags: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} test ${hex(bitmap)} ${hex(flags)} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
@@ -119,7 +121,7 @@ function test(s: Game, bitmap: number, flags: number) {
 }
 
 function check_arg_count(s: Game, argNumber: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
 
   s.doBranch(s.getArgCount() >= argNumber, condfalse, offset);
 }
@@ -159,13 +161,13 @@ function not(s: Game, value: number) {
 
 // object/attribute related opcodes
 function test_attr(s: Game, obj: number, attribute: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} test_attr ${hex(obj)} ${hex(
       attribute
     )} -> [${!condfalse}] ${hex(s.pc + offset - 2)}`
   );
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in test_attr");
     s.doBranch(false, condfalse, offset);
@@ -176,7 +178,7 @@ function test_attr(s: Game, obj: number, attribute: number) {
 
 function set_attr(s: Game, obj: number, attribute: number) {
   s._log.debug(`${hex(s.op_pc)} set_attr ${obj} ${attribute}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in set_attr");
     return;
@@ -186,7 +188,7 @@ function set_attr(s: Game, obj: number, attribute: number) {
 
 function clear_attr(s: Game, obj: number, attribute: number) {
   s._log.debug(`${hex(s.op_pc)} clear_attr ${obj} ${attribute}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in clear_attr");
     return;
@@ -196,12 +198,12 @@ function clear_attr(s: Game, obj: number, attribute: number) {
 
 function insert_obj(s: Game, obj: number, destination: number) {
   s._log.debug(`${hex(s.op_pc)} insert_obj ${obj} ${destination}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in insert_obj");
     return;
   }
-  let desto = s.getObject(destination);
+  const desto = s.getObject(destination);
   if (desto === null) {
     s._log.error("destination object null in insert_obj");
     return;
@@ -212,7 +214,7 @@ function insert_obj(s: Game, obj: number, destination: number) {
       // it's the first child.  easy.
       o.parent.child = o.sibling;
     } else {
-      let p = o.parent;
+      const p = o.parent;
       let next;
       for (let c = p.child; c !== null; c = next) {
         next = c.sibling;
@@ -233,13 +235,13 @@ function insert_obj(s: Game, obj: number, destination: number) {
 }
 
 function get_prop(s: Game, obj: number, property: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop ${hex(obj)} ${hex(property)} -> (${hex(
       resultVar
     )})`
   );
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn("get_prop called on null object");
     s.storeVariable(resultVar, 0);
@@ -249,13 +251,13 @@ function get_prop(s: Game, obj: number, property: number) {
 }
 
 function get_prop_addr(s: Game, obj: number, property: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop_addr ${hex(obj)} ${hex(property)} -> (${hex(
       resultVar
     )})`
   );
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn("get_prop_addr called on null object");
     return;
@@ -264,13 +266,13 @@ function get_prop_addr(s: Game, obj: number, property: number) {
 }
 
 function get_next_prop(s: Game, obj: number, property: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_next_prop ${hex(obj)} ${hex(property)} -> (${hex(
       resultVar
     )})`
   );
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn("get_next_prop called on null object");
     return;
@@ -279,15 +281,15 @@ function get_next_prop(s: Game, obj: number, property: number) {
 }
 
 function get_sibling(s: Game, obj: Address) {
-  let resultVar = s.readByte();
-  let [offset, condfalse] = s.readBranchOffset();
+  const resultVar = s.readByte();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} get_sibling ${hex(obj)} -> (${hex(
       resultVar
     )}) ?[${!condfalse}] ${hex(offset)}`
   );
 
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   let sibling: GameObject | null = null;
   if (o) {
     sibling = o.sibling;
@@ -305,20 +307,20 @@ function get_sibling(s: Game, obj: Address) {
 }
 
 function get_child(s: Game, obj: number) {
-  let resultVar = s.readByte();
-  let [offset, condfalse] = s.readBranchOffset();
+  const resultVar = s.readByte();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} get_child ${hex(obj)} -> (${hex(
       resultVar
     )}) ?[${!condfalse}] ${hex(offset)}`
   );
 
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn("object is 0 in get_child");
     return;
   }
-  let child = o.child;
+  const child = o.child;
   if (child) {
     s.storeVariable(resultVar, child.objnum);
   } else {
@@ -328,19 +330,19 @@ function get_child(s: Game, obj: number) {
 }
 
 function get_parent(s: Game, obj: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} get_parent ${hex(obj)} -> (${hex(resultVar)})`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in get_parent");
   }
-  let parent_objnum = o === null || o.parent === null ? 0 : o.parent.objnum;
+  const parent_objnum = o === null || o.parent === null ? 0 : o.parent.objnum;
   s.storeVariable(resultVar, parent_objnum);
 }
 
 function remove_obj(s: Game, obj: number) {
   s._log.debug(`${hex(s.op_pc)} remove_obj ${hex(obj)}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.error("object null in remove_obj");
     return;
@@ -350,7 +352,7 @@ function remove_obj(s: Game, obj: number) {
 
 function put_prop(s: Game, obj: number, property: number, value: number) {
   s._log.debug(`put ${hex(obj)} ${hex(property)} ${hex(value)}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn("put_prop called on null object");
     return;
@@ -359,11 +361,11 @@ function put_prop(s: Game, obj: number, property: number, value: number) {
 }
 
 function get_prop_len(s: Game, propDataAddr: Address) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} get_prop_len ${hex(propDataAddr)} -> (${hex(resultVar)})`
   );
-  let len = GameObject.getPropertyLength(s, propDataAddr);
+  const len = GameObject.getPropertyLength(s, propDataAddr);
   s.storeVariable(resultVar, len);
 }
 
@@ -382,26 +384,26 @@ function pull(s: Game, variable: number) {
 
 // increment/decrement variables
 function dec_chk(s: Game, variable: number, value: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} dec_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
     )}`
   );
-  let new_val = toI16(s.loadVariable(variable, true)) - 1;
+  const new_val = toI16(s.loadVariable(variable, true)) - 1;
   s.storeVariable(variable, toU16(new_val), true);
   s._log.debug(`     ${new_val} <? ${value}`);
   s.doBranch(new_val < toI16(value), condfalse, offset);
 }
 
 function inc_chk(s: Game, variable: number, value: number) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   s._log.debug(
     `${hex(s.op_pc)} inc_chk ${hex(variable)} ${value} -> [${!condfalse}] ${hex(
       s.pc + offset - 2
     )}`
   );
-  let new_val = toI16(s.loadVariable(variable, true)) + 1;
+  const new_val = toI16(s.loadVariable(variable, true)) + 1;
   s.storeVariable(variable, toU16(new_val), true);
   s._log.debug(`     ${new_val} ?> ${value}`);
   s.doBranch(new_val > toI16(value), condfalse, offset);
@@ -443,13 +445,13 @@ function storeb(s: Game, array: number, byte_index: number, value: number) {
 }
 
 function load(s: Game, variable: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(`${hex(s.op_pc)} load ${hex(variable)} -> (${hex(resultVar)})`);
   s.storeVariable(resultVar, s.loadVariable(variable, true), true);
 }
 
 function loadw(s: Game, array: number, word_index: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} loadw ${hex(array)} ${hex(word_index)} -> (${hex(
       resultVar
@@ -459,7 +461,7 @@ function loadw(s: Game, array: number, word_index: number) {
 }
 
 function loadb(s: Game, array: number, byte_index: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s._log.debug(
     `${hex(s.op_pc)} loadb ${hex(array)} ${hex(byte_index)} -> (${hex(
       resultVar
@@ -470,7 +472,7 @@ function loadb(s: Game, array: number, byte_index: number) {
 
 // opcodes dealing with function calls/returns
 function call_1s(s: Game, routine: Address) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
     return;
@@ -492,7 +494,7 @@ function call_1n(s: Game, routine: Address) {
 }
 
 function call_2s(s: Game, routine: Address, arg1: number) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
     return;
@@ -514,7 +516,7 @@ function call_2n(s: Game, routine: Address, arg1: number) {
 }
 
 function call_vs2(s: Game, routine: Address, ...args: Array<number>) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
     return;
@@ -527,7 +529,7 @@ function call_vs2(s: Game, routine: Address, ...args: Array<number>) {
 }
 
 function call(s: Game, routine: Address, ...args: Array<number>) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   if (routine === 0) {
     s.storeVariable(resultVar, 0);
     return;
@@ -591,7 +593,7 @@ function print_addr(s: Game, stringAddr: Address) {
 
 function print_obj(s: Game, obj: number) {
   s._log.debug(`${hex(s.op_pc)} print_obj ${hex(obj)}`);
-  let o = s.getObject(obj);
+  const o = s.getObject(obj);
   if (o === null) {
     s._log.warn(`print_obj: object ${hex(obj)} not found`);
     return;
@@ -675,7 +677,7 @@ function output_stream(
   table: number,
   width: number
 ) {
-  let streamNumber = toI16(streamNum);
+  const streamNumber = toI16(streamNum);
   if (streamNumber === 0) {
     // why emit this opcode at all?
     return;
@@ -692,9 +694,9 @@ function input_stream(s: Game, streamNum: number) {
 }
 
 function save(s: Game) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
 
-  let saved = s.saveGame();
+  const saved = s.saveGame();
   if (s._version < 5) {
     s.doBranch(saved, condfalse, offset);
   } else {
@@ -703,9 +705,9 @@ function save(s: Game) {
 }
 
 function restore(s: Game) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
 
-  let restored = s.restoreGame();
+  const restored = s.restoreGame();
   if (s._version < 5) {
     s.doBranch(restored, condfalse, offset);
   } else {
@@ -730,7 +732,7 @@ function sread(
     resultVar = s.readByte();
   }
 
-  let max_input = s.getByte(textBuffer) + 1;
+  const max_input = s.getByte(textBuffer) + 1;
   s._log.debug(
     `sread max_input=${max_input}, text=${textBuffer}, parse=${parseBuffer}, time=${time}, routine=${routine}`
   );
@@ -755,12 +757,12 @@ function print_num(s: Game, value: number) {
 }
 function random(s: Game, range: number) {
   s._log.debug(`random(${range})`);
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   if (range <= 0) {
     // (XXX) can't seed in JS?
     s.storeVariable(resultVar, 0);
   } else {
-    let rv = Math.floor(Math.random() * range + 1);
+    const rv = Math.floor(Math.random() * range + 1);
     s.storeVariable(resultVar, rv);
   }
 }
@@ -775,7 +777,7 @@ function sound_effect(
   s._log.warn(`sound_effect ${number} -- not implemented`);
 }
 function read_char(s: Game, _dev: number, _time: number, _routine: Address) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   throw new SuspendForUserInput({
     keyPress: true,
     resultVar,
@@ -788,19 +790,19 @@ function scan_table(
   len: number,
   form = 0x82
 ) {
-  let resultVar = s.readByte();
-  let [offset, condfalse] = s.readBranchOffset();
+  const resultVar = s.readByte();
+  const [offset, condfalse] = s.readBranchOffset();
 
   s._log.debug(`scan_table ${hex(x)} ${hex(table)} ${hex(len)} ${hex(form)}`);
 
   // XXX can we verify that 'x' is the proper sized value?
-  let searchForWord = (form & 0x80) === 80;
-  let elementSize = form & 0x7f;
+  const searchForWord = (form & 0x80) === 80;
+  const elementSize = form & 0x7f;
 
-  let cur = table;
-  let end = table + len;
+  let cur = toU16(table);
+  const end = toU16(table + len);
   while (cur < end) {
-    let table_element = searchForWord ? s.getWord(cur) : s.getByte(cur);
+    const table_element = searchForWord ? s.getWord(cur) : s.getByte(cur);
     if (table_element === x) {
       s._log.debug(`+ found element at ${hex(cur)}`);
       s.storeVariable(resultVar, cur);
@@ -808,6 +810,7 @@ function scan_table(
       return;
     }
     cur += elementSize;
+    cur = toU16(cur);
   }
 
   s._log.debug(`+ didn't find element`);
@@ -845,13 +848,13 @@ function print_table(
 }
 
 function piracy(s: Game) {
-  let [offset, condfalse] = s.readBranchOffset();
+  const [offset, condfalse] = s.readBranchOffset();
   // we are gullible and assume everything is okay.
   s.doBranch(true, condfalse, offset);
 }
 
 function zCatch(s: Game) {
-  let resultVar = s.readByte();
+  const resultVar = s.readByte();
   s.storeVariable(resultVar, s._callstack.length - 1);
 }
 
