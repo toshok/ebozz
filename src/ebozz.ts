@@ -14,24 +14,26 @@ import { toI16 } from "./cast16.js";
 import { hex, dumpParsebuffer } from "./debug-helpers.js";
 import Log from "./log.js";
 
-const OperandType = {
+enum OperandType {
   //  $$00    Large constant (0 to 65535)    2 bytes
-  Large: 0,
+  Large = 0,
 
   //  $$01    Small constant (0 to 255)      1 byte
-  Small: 1,
+  Small = 1,
 
   //  $$10    Variable                       1 byte
-  Variable: 2,
+  Variable = 2,
 
   //  $$11    Omitted altogether             0 bytes
-  Omitted: 3,
-} as const;
+  Omitted = 3,
+}
 
-const INSTRUCTION_FORM_LONG = 0;
-const INSTRUCTION_FORM_SHORT = 1;
-const INSTRUCTION_FORM_VARIABLE = 2;
-//const INSTRUCTION_FORM_EXTENDED = 3;
+enum InstructionForm {
+  Long = 0,
+  Short = 1,
+  Variable = 2,
+  Extended = 3,
+}
 
 export default class Game {
   private _pc: Address;
@@ -108,9 +110,9 @@ export default class Game {
     screen: Screen,
     storage: Storage
   ) {
-    let { mem, stack, callstack, pc } =
+    const { mem, stack, callstack, pc } =
       Game.readSnapshotFromBuffer(snapshotBuffer);
-    let g = new Game(mem, log, screen, storage);
+    const g = new Game(mem, log, screen, storage);
     g._stack = stack;
     g._callstack = callstack;
     g._pc = pc;
@@ -122,26 +124,26 @@ export default class Game {
       `at snapshot time, mem is length ${this._mem.length}, and pc = ${this.pc}`
     );
     const chunkHeader = (type: number, length: number): Buffer => {
-      let b = Buffer.alloc(8);
+      const b = Buffer.alloc(8);
       b.writeUInt32LE(type, 0);
       b.writeUInt32LE(length, 4);
       return b;
     };
 
-    let buffers: Array<Buffer> = [];
+    const buffers: Array<Buffer> = [];
     buffers.push(chunkHeader(1, this._mem.length));
     buffers.push(this._mem);
 
-    let stackString = JSON.stringify(this._stack);
+    const stackString = JSON.stringify(this._stack);
     buffers.push(chunkHeader(2, stackString.length));
     buffers.push(Buffer.from(stackString, "utf8"));
 
-    let callstackString = JSON.stringify(this._callstack);
+    const callstackString = JSON.stringify(this._callstack);
     buffers.push(chunkHeader(3, callstackString.length));
     buffers.push(Buffer.from(callstackString, "utf8"));
 
     buffers.push(chunkHeader(4, 4));
-    let b = Buffer.alloc(4);
+    const b = Buffer.alloc(4);
     b.writeUInt32LE(this._pc);
     buffers.push(b);
 
@@ -156,10 +158,10 @@ export default class Game {
 
     let p = 0;
 
-    let readChunk = () => {
-      let type = b.readUInt32LE(p);
+    const readChunk = () => {
+      const type = b.readUInt32LE(p);
       p += 4;
-      let length = b.readUInt32LE(p);
+      const length = b.readUInt32LE(p);
       p += 4;
 
       switch (type) {
@@ -248,7 +250,7 @@ export default class Game {
 
   restoreGame() {
     try {
-      let { mem, stack, callstack } = this._storage.loadSnapshot(this);
+      const { mem, stack, callstack } = this._storage.loadSnapshot(this);
       this._mem = mem;
       this._stack = stack;
       this._callstack = callstack;
@@ -263,10 +265,10 @@ export default class Game {
     if (!input_state.keyPress) {
       throw new Error("continueAfterKeyPress called for non-keypress");
     }
-    let timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       clearTimeout(timeoutId);
 
-      let { resultVar } = input_state;
+      const { resultVar } = input_state;
       // XXX(toshok) this is almost certainly wrong, but until we support input that doesn't require the enter
       // key to be hit, feels like an okay compromise?
       this.storeVariable(resultVar, 0x0d /*XXX*/);
@@ -281,12 +283,12 @@ export default class Game {
     }
     // probably not fully necessary, but unwind back to the event loop before transfering
     // back to game code.
-    let timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       clearTimeout(timeoutId);
 
       input = input.toLowerCase();
 
-      let { textBuffer, parseBuffer, resultVar } = input_state;
+      const { textBuffer, parseBuffer, resultVar } = input_state;
       if (textBuffer === undefined) {
         throw new Error("textBuffer undefined");
       }
@@ -302,7 +304,7 @@ export default class Game {
       input = input.slice(0, max_input);
 
       for (let i = 0, e = input.length; i < e; i++) {
-        let c = input.charCodeAt(i);
+        const c = input.charCodeAt(i);
         // XXX(toshok) convert `c` to zscii.  for now assume we're dealing with ascii anyway and just
         // pass it through.
 
@@ -346,7 +348,7 @@ export default class Game {
     } catch (e) {
       if (e instanceof SuspendForUserInput) {
         // use setTimeout so we fully unwind before calling the input_cb
-        let timeoutId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           clearTimeout(timeoutId);
           try {
             if (e.state.keyPress) {
@@ -370,7 +372,7 @@ export default class Game {
     // in hexadecimal) and the version is 5 or later, the form is
     // "extended". Otherwise, the form is "long".
 
-    let op_pc = this.pc;
+    const op_pc = this.pc;
     let opcode = this.readByte();
 
     let operandTypes: Array<number /* OperandType */> = [];
@@ -381,7 +383,7 @@ export default class Game {
     // console.error(`[DEBUG] ${op_pc.toString(16)}: opbyte = ${opcode}`);
 
     if ((opcode & 0xc0) === 0xc0) {
-      form = INSTRUCTION_FORM_VARIABLE;
+      form = InstructionForm.Variable;
 
       if ((opcode & 0x20) !== 0) {
         reallyVariable = true;
@@ -389,10 +391,10 @@ export default class Game {
         // not really variable - 2 args
       }
 
-      if (form === INSTRUCTION_FORM_VARIABLE) {
-        let bits = this.readByte();
+      if (form === InstructionForm.Variable) {
+        const bits = this.readByte();
         for (let i = 0; i < 4; i++) {
-          let optype = (bits >> ((3 - i) * 2)) & 0x03;
+          const optype = (bits >> ((3 - i) * 2)) & 0x03;
           if (optype !== OperandType.Omitted) {
             operandTypes.push(optype);
           } else {
@@ -403,9 +405,9 @@ export default class Game {
 
       opcode = opcode & 0x1f;
     } else if ((opcode & 0x80) === 0x80) {
-      form = INSTRUCTION_FORM_SHORT;
+      form = InstructionForm.Short;
 
-      let optype = (opcode & 0x30) >> 4;
+      const optype = (opcode & 0x30) >> 4;
       if (optype !== OperandType.Omitted) {
         operandTypes = [optype];
       }
@@ -414,7 +416,7 @@ export default class Game {
     } else if (opcode === 190 && this._version >= 5) {
       throw new Error("extended opcodes not implemented");
     } else {
-      form = INSTRUCTION_FORM_LONG;
+      form = InstructionForm.Long;
 
       operandTypes.push(
         (opcode & 0x40) === 0x40 ? OperandType.Variable : OperandType.Small
@@ -426,17 +428,17 @@ export default class Game {
       opcode = opcode & 0x1f;
     }
 
-    let operands: Array<number> = [];
-    for (let optype of operandTypes) {
+    const operands: Array<number> = [];
+    for (const optype of operandTypes) {
       if (optype === OperandType.Large) {
-        let op = this.readWord();
+        const op = this.readWord();
         operands.push(op);
       } else if (optype === OperandType.Small) {
-        let o = this.readByte();
+        const o = this.readByte();
         operands.push(o);
       } else if (optype === OperandType.Variable) {
-        let varnum = this.readByte();
-        let varval = this.loadVariable(varnum);
+        const varnum = this.readByte();
+        const varval = this.loadVariable(varnum);
         operands.push(varval);
       } else {
         throw new Error("XXX");
@@ -571,7 +573,7 @@ export default class Game {
     }
     if (v < 16) {
       // local
-      let cur_frame = this._callstack[this._callstack.length - 1];
+      const cur_frame = this._callstack[this._callstack.length - 1];
       if (v > cur_frame.locals.length) {
         throw new Error(
           `local ${v} out of range.  there are ${cur_frame.locals.length} locals`
@@ -594,7 +596,7 @@ export default class Game {
     }
     if (variable < 16) {
       // local
-      let cur_frame = this._callstack[this._callstack.length - 1];
+      const cur_frame = this._callstack[this._callstack.length - 1];
       if (variable > cur_frame.locals.length) {
         throw new Error("no local");
       }
@@ -606,17 +608,17 @@ export default class Game {
   }
 
   readByte(): number {
-    let rv = this.getByte(this._pc);
+    const rv = this.getByte(this._pc);
     this._pc++;
     return rv;
   }
   readWord(): number {
-    let rv = this.getWord(this._pc);
+    const rv = this.getWord(this._pc);
     this._pc += 2;
     return rv;
   }
   readZString(): ZString {
-    let rv = this.getZString(this._pc);
+    const rv = this.getZString(this._pc);
     this._pc += Math.floor((rv.length / 3) * 2);
     return rv;
   }
@@ -637,23 +639,23 @@ export default class Game {
     if (addr < 0 || addr > this._mem.length) {
       throw new Error("segfault");
     }
-    let ub = this._mem[addr + 0];
-    let lb = this._mem[addr + 1];
+    const ub = this._mem[addr + 0];
+    const lb = this._mem[addr + 1];
     return ub * 256 + lb;
   }
   setWord(addr: Address, value: number): void {
     if (addr < 0 || addr > this._mem.length) {
       throw new Error("segfault");
     }
-    let lb = value & 255;
-    let ub = value >> 8;
+    const lb = value & 255;
+    const ub = value >> 8;
     this._mem[addr + 0] = ub;
     this._mem[addr + 1] = lb;
   }
   getZString(addr: Address): ZString {
-    let chars: Array<number> = [];
+    const chars: Array<number> = [];
     while (true) {
-      let w = this.getWord(addr);
+      const w = this.getWord(addr);
       chars.push((w >> 10) & 0x1f, (w >> 5) & 0x1f, (w >> 0) & 0x1f);
       if ((w & 0x8000) !== 0) {
         break;
@@ -665,9 +667,9 @@ export default class Game {
   getLenZString(addr: Address): ZString {
     let len = this.getByte(addr);
     addr++;
-    let chars: Array<number> = [];
+    const chars: Array<number> = [];
     while (len-- > 0) {
-      let w = this.getWord(addr);
+      const w = this.getWord(addr);
       chars.push((w >> 10) & 0x1f, (w >> 5) & 0x1f, (w >> 0) & 0x1f);
       if ((w & 0x8000) !== 0) {
         this._log.warn("high bit found in length string.");
@@ -679,7 +681,7 @@ export default class Game {
   }
 
   readBranchOffset(): [number, boolean] {
-    let branchData = this.readByte();
+    const branchData = this.readByte();
     let off1 = branchData & 0x3f;
     let offset;
     if ((branchData & 0x40) == 0x40) {
@@ -722,8 +724,8 @@ export default class Game {
     ...args: Array<number>
   ) {
     // initialize locals
-    let num_locals = this.getByte(addr++);
-    let locals = Array(num_locals);
+    const num_locals = this.getByte(addr++);
+    const locals = Array(num_locals);
     if (this._version >= 5) {
       for (let i = 0; i < num_locals; i++) {
         locals[i] = 0;
@@ -740,7 +742,7 @@ export default class Game {
       locals[ai] = args[ai];
     }
 
-    let new_frame: CallFrame = {
+    const new_frame: CallFrame = {
       method_pc: addr,
       return_pc: this._pc,
       return_value_location: rv_location,
@@ -755,7 +757,7 @@ export default class Game {
     this._pc = addr;
   }
   returnFromRoutine(value: number) {
-    let popped_frame = this._callstack.pop();
+    const popped_frame = this._callstack.pop();
     if (popped_frame === undefined) {
       throw new Error("callstack empty in return");
     }
@@ -766,26 +768,26 @@ export default class Game {
   }
 
   getArgCount() {
-    let cur_frame = this._callstack[this._callstack.length - 1];
+    const cur_frame = this._callstack[this._callstack.length - 1];
     return cur_frame.arg_count;
   }
 
   lookupToken(dict: number, encoded_token_words: Array<number>) {
     // skip the separators
-    let num_sep = this.getByte(dict);
+    const num_sep = this.getByte(dict);
     dict += num_sep + 1;
 
-    let entry_len = this.getByte(dict);
+    const entry_len = this.getByte(dict);
     dict++;
 
-    let num_entries = this.getWord(dict);
+    const num_entries = this.getWord(dict);
     dict += 2;
     if (num_entries < 0) {
       // the entries aren't sorted, linear search
-      let lower = 0;
-      let upper = -num_entries - 1;
+      const lower = 0;
+      const upper = -num_entries - 1;
       while (lower <= upper) {
-        let entry_addr = dict + lower * entry_len;
+        const entry_addr = dict + lower * entry_len;
 
         let c = this.getWord(entry_addr) - encoded_token_words[0];
         if (c === 0) {
@@ -805,8 +807,8 @@ export default class Game {
     let lower = 0;
     let upper = num_entries - 1;
     while (lower <= upper) {
-      let cmp_entry = Math.floor((lower + upper) / 2);
-      let entry_addr = dict + cmp_entry * entry_len;
+      const cmp_entry = Math.floor((lower + upper) / 2);
+      const entry_addr = dict + cmp_entry * entry_len;
 
       let c = this.getWord(entry_addr) - encoded_token_words[0];
       if (c === 0) {
@@ -833,11 +835,11 @@ export default class Game {
   // XXX(toshok) woefully inadequate, but should handle ascii + separators
   encodeToken(text: string, padding = 0x05) {
     this._log.debug(`encodeToken(${text})`);
-    let resolution = this._version > 3 ? 3 : 2;
+    const resolution = this._version > 3 ? 3 : 2;
 
     // chop it off at 6 characters (the max)
     text = text.slice(0, 6);
-    let zchars: Array<number> = [];
+    const zchars: Array<number> = [];
 
     for (let i = 0; i < text.length; i++) {
       /*
@@ -856,7 +858,7 @@ export default class Game {
       zchars.push(padding);
     }
 
-    let zwords: Array<number> = [];
+    const zwords: Array<number> = [];
 
     for (let i = 0; i < resolution; i++) {
       zwords.push(
@@ -880,21 +882,21 @@ export default class Game {
     // [1]: count tokens
     // max tokens is supplied to us, and we fill in count tokens
 
-    let max_tokens = this.getByte(parsebuffer);
+    const max_tokens = this.getByte(parsebuffer);
 
     let count_tokens = this.getByte(parsebuffer + 1);
     if (count_tokens >= max_tokens) {
       return;
     }
 
-    let wordtext = inputbuffer.slice(start, end).toLowerCase();
-    let tokenword = this.encodeToken(wordtext);
+    const wordtext = inputbuffer.slice(start, end).toLowerCase();
+    const tokenword = this.encodeToken(wordtext);
     //this._log.warn(`tokenise_word "${wordtext} (${hex(tokenword[0])},${hex(tokenword[1])})"`);
 
-    let token_addr = this.lookupToken(this._dict, tokenword);
+    const token_addr = this.lookupToken(this._dict, tokenword);
     //this._log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
     if (token_addr !== 0) {
-      let token_storage = 4 * count_tokens + 2 + parsebuffer;
+      const token_storage = 4 * count_tokens + 2 + parsebuffer;
       this.setByte(parsebuffer + 1, ++count_tokens);
       this.setWord(token_storage, token_addr);
       this.setByte(token_storage + 2, end - start);
@@ -910,10 +912,8 @@ export default class Game {
     dict: number,
     flag: boolean
   ) {
-    let token_max, token_count;
-
-    token_max = this.getByte(parseBuffer);
-    token_count = this.getByte(parseBuffer + 1);
+    const token_max = this.getByte(parseBuffer);
+    const token_count = this.getByte(parseBuffer + 1);
 
     if (token_count >= token_max) {
       // no space for more tokens
@@ -923,15 +923,15 @@ export default class Game {
     this.setByte(parseBuffer + 1, token_count + 1);
 
     // frotz decodes then encodes again.  not sure why.
-    let wordZChars: Array<string> = [];
+    const wordZChars: Array<string> = [];
     for (let i = 0; i < length; i++) {
       wordZChars.push(String.fromCharCode(this.getByte(textBuffer + from + i)));
     }
 
-    let tokenword = this.encodeToken(wordZChars.join(""));
-    let token_addr = this.lookupToken(this._dict, tokenword);
+    const tokenword = this.encodeToken(wordZChars.join(""));
+    const token_addr = this.lookupToken(this._dict, tokenword);
     if (token_addr !== 0 || !flag) {
-      let token_storage = 4 * token_count + parseBuffer + 2;
+      const token_storage = 4 * token_count + parseBuffer + 2;
       this.setWord(token_storage, token_addr);
       this.setByte(token_storage + 2, length);
       this.setByte(token_storage + 3, from);
@@ -1019,8 +1019,8 @@ export default class Game {
     // clean parsebuffer by setting count_tokens == 0
     this.setByte(parsebuffer + 1, 0);
 
-    let num_sep = this.getByte(this._dict);
-    let sep_zscii: Array<number> = [];
+    const num_sep = this.getByte(this._dict);
+    const sep_zscii: Array<number> = [];
     for (let i = 0; i < num_sep; i++) {
       sep_zscii.push(this.getByte(this._dict + 1 + i));
     }
@@ -1047,8 +1047,8 @@ export default class Game {
       return CHAR_CLASS_WORD;
     }
 
-    let split_string = inputtext.split("");
-    let classes = split_string.map(char_class);
+    const split_string = inputtext.split("");
+    const classes = split_string.map(char_class);
     for (let start = 0; start < classes.length; start++) {
       if (classes[start] === CHAR_CLASS_SPACE) {
         continue;
