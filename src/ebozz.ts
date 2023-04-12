@@ -78,9 +78,12 @@ export default class Game {
 
     this._game_objects = [];
 
-    this._mem[0x20] = 0xff; // 255 = infinite height
-    this._mem[0x21] = 80; // XXX 80-character wide terminal
+    // tell the game about our screen size
+    const { rows, cols } = screen.getSize();
+    this._mem[0x20] = rows;
+    this._mem[0x21] = cols;
 
+    // tell the game about our font size
     // turn off split screen
 
     // tell the game some things about our capabilities
@@ -88,6 +91,7 @@ export default class Game {
       // we support all the things.  XXX(toshok) this should depend on the screen?
       this.setByte(0x01, 0xff);
     }
+
 
     // get the word separators out of the dictionary here so we don't have to do it
     // every time we tokenise below.
@@ -251,7 +255,26 @@ export default class Game {
     }
   }
 
+  continueAfterKeyPress(input_state: InputState, _key: string) {
+    if (!input_state.keyPress) {
+      throw new Error("continueAfterKeyPress called for non-keypress");
+    }
+    let timeoutId = setTimeout(() => {
+      clearTimeout(timeoutId);
+
+      let { resultVar } = input_state;
+      // XXX(toshok) this is almost certainly wrong, but until we support input that doesn't require the enter
+      // key to be hit, feels like an okay compromise?
+      this.storeVariable(resultVar, 0x0d /*XXX*/);
+
+      this.executeLoop();
+    });
+  }
+
   continueAfterUserInput(input_state: InputState, input: string) {
+    if (input_state.keyPress) {
+      throw new Error("continueAfterUserInput called for keypress");
+    }
     // probably not fully necessary, but unwind back to the event loop before transfering
     // back to game code.
     let timeoutId = setTimeout(() => {
@@ -260,6 +283,12 @@ export default class Game {
       input = input.toLowerCase();
 
       let { textBuffer, parseBuffer, resultVar } = input_state;
+      if (textBuffer === undefined) {
+        throw new Error("textBuffer undefined");
+      }
+      if (parseBuffer === undefined) {
+        throw new Error("parseBuffer undefined");
+      }
 
       let max_input = this.getByte(textBuffer);
       if (this._version <= 4) {
@@ -315,7 +344,11 @@ export default class Game {
         let timeoutId = setTimeout(() => {
           clearTimeout(timeoutId);
           try {
-            this._screen.getInputFromUser(this, e.state);
+            if (e.state.keyPress) {
+              this._screen.getKeyFromUser(this, e.state);
+            } else {
+              this._screen.getInputFromUser(this, e.state);
+            }
           } catch (e) {
             console.error(e);
           }
@@ -508,7 +541,8 @@ export default class Game {
     );
     const v = this._stack.pop();
     if (v === undefined) {
-      throw new Error("empty stack");
+      return 0;
+      // throw new Error("empty stack");
     }
     return v;
   }

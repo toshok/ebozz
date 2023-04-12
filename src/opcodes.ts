@@ -718,8 +718,11 @@ function sread(s: Game, textBuffer: number, parseBuffer: number, time: number, r
   s._log.debug(
     `sread max_input=${max_input}, text=${textBuffer}, parse=${parseBuffer}, time=${time}, routine=${routine}`
   );
+
   // XXX(toshok) we need to handle the initial contents of the buffer (only Shogun and Zork Zero use it?)
   throw new SuspendForUserInput({
+    keyPress: false,
+
     textBuffer,
     parseBuffer,
     time,
@@ -751,8 +754,10 @@ function sound_effect(s: Game, number: number, _effect: number, _volume: number,
 }
 function read_char(s: Game, _dev: number, _time: number, _routine: Address) {
   let resultVar = s.readByte();
-  //    readline.keyIn("{ hideEchoBack: true, mask: "" });
-  s.storeVariable(resultVar, 32 /*XXX*/);
+  throw new SuspendForUserInput({
+    keyPress: true,
+    resultVar,
+  });
 }
 function scan_table(s: Game, x: number, table: number, len: number, form = 0x82) {
   let resultVar = s.readByte();

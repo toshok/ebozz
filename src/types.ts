@@ -9,9 +9,15 @@ export type ZSCII = number;
 export type ZString = Array<ZSCII>;
 
 export type InputState = {
-    textBuffer: Address;
-    parseBuffer: Address;
-    resultVar: Address;
+  // will be false for a "read" instruction, true for a "read_char" instruction
+  keyPress: boolean;
+  resultVar: number;
+
+  // will only be filled in for keyPress === false
+  textBuffer?: number;
+  parseBuffer?: number;
+  time?: unknown;
+  routine?: unknown;
 };
 
 export type SnapshotData = {

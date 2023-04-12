@@ -1,49 +1,351 @@
-import * as blessed from "blessed";
+import blessed from "blessed";
 import Log from "../log.js";
-import { ScreenBase } from "../Screen.js";
+import { ScreenBase, ScreenSize, BufferMode, TextStyle, Color, colorToString } from "../Screen.js";
 import type Game from "../ebozz.js";
 import { InputState } from "../types.js";
+import { toI16 } from "../cast16.js";
+
+class Window {
+  screen: blessed.Widgets.Screen;
+  box: blessed.Widgets.Log;
+  bufferMode: BufferMode;
+  textStyle: TextStyle;
+  foreground: Color;
+  background: Color;
+  cursorPosRow: number;
+  cursorPosCol: number;
+  styledBuffer: string;
+  textBuffer: string;
+  top: number;
+  height: number;
+
+  constructor(screen: blessed.Widgets.Screen, top: number, height: number) {
+    this.screen = screen;
+    this.box = blessed.log({
+      parent: this.screen,
+      top,
+      left: 0,
+      width: this.screen.cols,
+      height,
+      tags: true,
+    });
+    this.top = top;
+    this.height = height;
+    this.bufferMode = BufferMode.Buffered;
+    this.textStyle = TextStyle.Roman;
+    this.foreground = Color.Default;
+    this.background = Color.Default;
+    this.cursorPosRow = -1;
+    this.cursorPosCol = -1;
+
+    // next two used if bufferMode is Buffered
+    this.styledBuffer = "";
+    this.textBuffer = "";
+
+    this.clear();
+  }
+
+  resize(top: number, height: number) {
+    this.box.top = top;
+    this.box.height = height;
+    this.top = top;
+    this.height = height;
+  }
+
+  styleText(str: string): string {
+    const style = this.textStyle;
+    const foreground = this.foreground;
+    const background = this.background;
+
+    let fgColor = colorToString(foreground);
+    let bgColor = colorToString(background);
+
+    let text = blessed.escape(str);
+
+    if (fgColor !== "") {
+      text = `{${fgColor}-fg}${text}{/${fgColor}-fg}`;
+    }
+    if (bgColor !== "") {
+      text = `{${bgColor}-bg}${text}{/${bgColor}-bg}`;
+    }
+
+    if (style === TextStyle.Bold) {
+      text = `{bold}${text}{/bold}`;
+    }
+    // not yet - does blessed do italic?
+    // if (style === TextStyle.Italic) {
+    //   text = `{italic}${text}{/italic}`;
+    // }
+    if (style === TextStyle.ReverseVideo) {
+      text = `{inverse}${text}{/inverse}`;
+    }
+
+    return text;
+  }
+
+  bufferText(unstyledStr: string) {
+    this.styledBuffer += this.styleText(unstyledStr);
+    this.textBuffer += unstyledStr;
+  }
+
+  flushBuffer() {
+    this.box.log(this.styledBuffer);
+    this.styledBuffer = "";
+    this.textBuffer = "";
+  }
+
+  clearBuffer() {
+    this.styledBuffer = "";
+    this.textBuffer = "";
+  }
+
+  clear() {
+    this.box.setContent("");
+    for (let i = 0; i < this.height; i++) {
+      this.box.log("");
+    }
+    this.clearBuffer();
+  }
+};
 
 export default class BlessedScreen extends ScreenBase {
   private screen: blessed.Widgets.Screen;
-  private gameLog: any;
+  private windows: Array<Window>;
+  private outputWindow: number;
 
   constructor(log: Log) {
     super(log, "BlessedScreen")
     this.screen = blessed.screen({
       smartCSR: true,
+      log: "blessed.log",
     });
     this.screen.title = "Ebozz";
 
-    this.gameLog = blessed.log({
-      parent: this.screen,
-      border: "line",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-    });
+    this.screen.log(`this.screen.rows: ${this.screen.rows}`);
+    this.screen.log(`this.screen.cols: ${this.screen.cols}`);
 
-    this.gameLog.focus();
+    this.windows = [
+      // start with window 0 taking up no space
+      new Window(this.screen, this.screen.rows, 0),
+      // start with window 1 taking up the whole screen
+      new Window(this.screen, 0, this.screen.rows),
+    ];
 
     this.screen.key(["C-c"], (_ch, _key) => {
       this.screen.destroy();
       return process.exit(0);
     });
 
+    this.outputWindow = 1;
+    this.windows[this.outputWindow].box.focus();
+
     this.screen.render();
   }
 
   getInputFromUser(_game: Game, _input_state: InputState) {
+    this.log.debug(`BlessedScreen.getInputFromUser`);
+
+    // the prompt might be buffered.  display that and .. add a cursor someplace
+    this.windows[this.outputWindow].flushBuffer();
     /*
     let input = readline.question("");
     game.continueAfterUserInput(input_state, input);
     */
   }
 
-  print(game: Game, str: string) {
-    this.gameLog.log(str);
-    this.screen.render();
-    //    process.stdout.write(str);
+  getKeyFromUser(game: Game, input_state: InputState) {
+    this.log.debug(`BlessedScreen.getKeyFromUser`);
+    this.screen.once("keypress", (_ch, _key) => {
+      game.continueAfterKeyPress(input_state, " " /* the key pressed */);
+    });
   }
+
+  print(_game: Game, str: string) {
+    this.log.debug(`BlessedScreen.print str="${str}"`);
+
+    const outputWindow = this.windows[this.outputWindow];
+
+    if (outputWindow.bufferMode === BufferMode.Buffered) {
+      if (str === "\n") {
+        this.screen.log("flushing due to a newline");
+        outputWindow.flushBuffer();
+        return;
+      }
+
+      const paragraphs = str.split("\n");
+      this.screen.log(`paragraphs: ${JSON.stringify(paragraphs)}`);
+      for (let i = 0; i < paragraphs.length; i++) {
+        const paragraph = paragraphs[i];
+        if (outputWindow.textBuffer.length + paragraph.length <= this.screen.cols) {
+          this.screen.log(`paragraph "${paragraph}" fits on current line`);
+          // we don't need to wrap this paragraph.  style it and either buffer it (if it's the last paragraph) or output it.
+          if (i === paragraphs.length - 1) {
+            if (paragraph.length > 0) {
+              this.screen.log(`buffering last paragraph: "${paragraph}"`);
+              outputWindow.bufferText(paragraph);
+            }
+          } else {
+            this.screen.log(`logging paragraph "${outputWindow.styledBuffer + this.styleText(paragraph)}"`);
+            outputWindow.bufferText(paragraph);
+            outputWindow.flushBuffer();
+          }
+        } else {
+          this.screen.log(`paragraph "${paragraph}" doesn't fit on current line`);
+          // we need to wrap this paragraph
+          let text = "";
+          let startIdx = 0;
+
+          while (startIdx < paragraph.length) {
+            const nextSpace = paragraph.indexOf(" ", paragraph[startIdx] === " " ? startIdx + 1 : startIdx);
+            const nextWord = nextSpace === -1 ? paragraph.substring(startIdx) : paragraph.substring(startIdx, nextSpace);
+
+            if (outputWindow.textBuffer.length + text.length + nextWord.length > this.screen.cols) {
+              this.screen.log(`logging wrapped line "${outputWindow.styledBuffer + this.styleText(text)}"`);
+              outputWindow.bufferText(text);
+              outputWindow.flushBuffer();
+              this.screen.log(`resetting text to "${nextWord.trimStart()}"`)
+              text = nextWord.trimStart();
+            } else {
+              text += nextWord;
+            }
+
+            if (nextSpace === -1) {
+              break;
+            }
+            startIdx = nextSpace;
+          }
+
+          if (text.length > 0) {
+            outputWindow.bufferText(text);
+            if (i !== paragraphs.length - 1) {
+              outputWindow.flushBuffer();
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    if (outputWindow.cursorPosRow === -1 && outputWindow.cursorPosCol === -1) {
+      outputWindow.box.log(this.styleText(str));
+    } else {
+      // do we need to fetch the current line and overlay str on top of it before writing it back out? ugh...
+      const prefix = " ".repeat(outputWindow.cursorPosCol);
+      const suffix = " ".repeat(this.screen.cols - outputWindow.cursorPosCol - str.length);
+
+      outputWindow.box.setLine(outputWindow.cursorPosRow - 1, this.styleText(str));
+    }
+    this.screen.render();
+  }
+
+  styleText(str: string): string {
+    const style = this.windows[this.outputWindow].textStyle;
+    const foreground = this.windows[this.outputWindow].foreground;
+    const background = this.windows[this.outputWindow].background;
+
+    let fgColor = colorToString(foreground);
+    let bgColor = colorToString(background);
+
+    let text = blessed.escape(str);
+
+    if (fgColor !== "") {
+      text = `{${fgColor}-fg}${text}{/${fgColor}-fg}`;
+    }
+    if (bgColor !== "") {
+      text = `{${bgColor}-bg}${text}{/${bgColor}-bg}`;
+    }
+
+    if (style === TextStyle.Bold) {
+      text = `{bold}${text}{/bold}`;
+    }
+    // not yet - does blessed do italic?
+    // if (style === TextStyle.Italic) {
+    //   text = `{italic}${text}{/italic}`;
+    // }
+    if (style === TextStyle.ReverseVideo) {
+      text = `{inverse}${text}{/inverse}`;
+    }
+
+    return text;
+  }
+
+  setOutputWindow(_game: Game, windowId: number) {
+    this.log.debug(`BlessedScreen.setOutputWindow windowId=${windowId}`);
+    this.outputWindow = windowId;
+    this.windows[this.outputWindow].box.focus();
+    this.screen.render();
+  }
+
+  getOutputWindow(_game: Game) {
+    this.log.debug(`BlessedScreen.getOutputWindow -> windowId=${this.outputWindow}`);
+    return this.outputWindow;
+  }
+
+  splitWindow(game: Game, lines: number): void {
+    if (lines === 0) {
+      // unsplit the screen so box 1 takes up the full height
+      this.unsplitWindow(game);
+    } else {
+      // split the screen so that box 1 gets the specified number of lines
+      this.windows[1].resize(this.screen.rows, lines);
+      this.windows[0].resize(lines, this.screen.rows - lines);
+    }
+
+    this.screen.log("window configuration:");
+    this.screen.log(`  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`);
+    this.screen.log(`  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`);
+
+    this.screen.render();
+  }
+
+  private unsplitWindow(_game: Game): void {
+    this.windows[1].resize(0, this.screen.rows);
+    this.windows[0].resize(this.screen.rows, 0);
+    this.screen.log("window configuration:");
+    this.screen.log(`  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`);
+    this.screen.log(`  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`);
+    this.screen.render();
+  }
+
+  clearWindow(game: Game, windowId: number): void {
+    const id = toI16(windowId);
+    this.log.debug(`BlessedScreen.clearWindow windowId=${id}`);
+    if (id < 0) {
+      this.windows[0].clear();
+      this.windows[1].clear();
+      if (id === -1) {
+        this.unsplitWindow(game);
+      }
+    } else {
+      this.windows[id].clear();
+    }
+    this.screen.render();
+  }
+
+  setCursorPosition(_game: Game, line: number, column: number, windowId: number): void {
+    this.log.debug(`BlessedScreen.setCursorPosition line=${line} column=${column} windowId=${windowId}`);
+    this.windows[windowId].cursorPosRow = line;
+    this.windows[windowId].cursorPosCol = column;
+  }
+
+  setTextStyle(_game: Game, style: TextStyle): void {
+    this.log.debug(`BlessedScreen.setTextStyle style=${style}`);
+    this.windows[this.outputWindow].textStyle = style;
+  }
+
+  setTextColors(_game: Game, windowId: number, foreground: Color, background: Color) {
+    this.log.debug(`BlessedScreen.setTextColor windowId=${windowId} foreground=${foreground} background=${background}`);
+    this.windows[windowId].foreground = foreground;
+    this.windows[windowId].background = background;
+  }
+
+  setBufferMode(_game: Game, mode: BufferMode): void {
+    this.log.debug(`BlessedScreen.setBufferMode mode=${mode}`);
+    this.windows[this.outputWindow].bufferMode = mode;
+  }
+
+  getSize(): ScreenSize {
+    return { rows: this.screen.rows, cols: this.screen.cols };
+  }
+
 }
