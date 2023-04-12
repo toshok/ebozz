@@ -158,7 +158,7 @@ export default class BlessedScreen extends ScreenBase {
     outputWindow.flushBuffer();
 
     const screenLines = outputWindow.box.getScreenLines();
-    let text = blessed.textbox({
+    const text = blessed.textbox({
       parent: this.screen,
       top: outputWindow.top + screenLines.length - 1,
       left: screenLines[screenLines.length - 1].length + 1,
@@ -168,7 +168,10 @@ export default class BlessedScreen extends ScreenBase {
       inputOnFocus: true,
     });
     text.on("submit", () => {
-      outputWindow.box.setLine(screenLines.length - 1, screenLines[screenLines.length - 1] + " " + text.getValue());
+      outputWindow.box.setLine(
+        screenLines.length - 1,
+        screenLines[screenLines.length - 1] + " " + text.getValue()
+      );
       game.continueAfterUserInput(input_state, text.getValue());
       text.destroy();
     });
