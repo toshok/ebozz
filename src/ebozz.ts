@@ -625,19 +625,19 @@ export default class Game {
 
   getByte(addr: Address): number {
     if (addr < 0 || addr >= this._mem.length) {
-      throw new Error("segfault");
+      throw new Error(`segfault: ${addr}`);
     }
     return this._mem[addr];
   }
   setByte(addr: Address, b: number): void {
     if (addr < 0 || addr >= this._mem.length) {
-      throw new Error("segfault");
+      throw new Error(`segfault: ${addr}`);
     }
     this._mem[addr] = b;
   }
   getWord(addr: Address): number {
     if (addr < 0 || addr > this._mem.length) {
-      throw new Error("segfault");
+      throw new Error(`segfault: ${addr}`);
     }
     const ub = this._mem[addr + 0];
     const lb = this._mem[addr + 1];
@@ -645,7 +645,7 @@ export default class Game {
   }
   setWord(addr: Address, value: number): void {
     if (addr < 0 || addr > this._mem.length) {
-      throw new Error("segfault");
+      throw new Error(`segfault: ${addr}`);
     }
     const lb = value & 255;
     const ub = value >> 8;
