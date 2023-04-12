@@ -6,12 +6,12 @@ import Game from "./ebozz.js";
 import { ScreenBase } from "./Screen.js";
 import { InputState, Storage } from "./types.js";
 
-let gameName = process.argv[2];
+const gameName = process.argv[2];
 
-let gameFile = `tests/${gameName}.dat`;
-let walkthroughFile = `tests/${gameName}.walkthrough`;
+const gameFile = `tests/${gameName}.dat`;
+const walkthroughFile = `tests/${gameName}.walkthrough`;
 
-let walkthrough = fs.readFileSync(walkthroughFile, "utf8").split("\n");
+const walkthrough = fs.readFileSync(walkthroughFile, "utf8").split("\n");
 let command = 0;
 
 function getNextLine() {
@@ -31,7 +31,7 @@ class TestRunnerScreen extends ScreenBase {
   }
 
   getInputFromUser(game: Game, input_state: InputState) {
-    let input = getNextLine();
+    const input = getNextLine();
     if (!input) {
       process.exit(0);
     }
@@ -51,15 +51,15 @@ class TestRunnerStorage implements Storage {
     });
   }
 
-  loadSnapshot(game: Game) {
-    let f = fs.readFileSync("snapshot.dat");
-    let b = Buffer.from(f.buffer);
-    return Game.readSnapshotFromBuffer(Buffer.from(f.buffer));
+  loadSnapshot(_game: Game) {
+    const f = fs.readFileSync("snapshot.dat");
+    const b = Buffer.from(f.buffer);
+    return Game.readSnapshotFromBuffer(b);
   }
 }
 
-let log = new Log(false);
-let game = new Game(
+const log = new Log(false);
+const game = new Game(
   fs.readFileSync(gameFile),
   log,
   new TestRunnerScreen(log),

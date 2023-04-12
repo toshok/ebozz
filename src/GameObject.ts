@@ -20,22 +20,22 @@ export default class GameObject {
   }
 
   dumpPropData(entry: number) {
-    let propDataPtr = this._propDataPtr(entry);
-    let propDataLen = GameObject._propDataLen(this.state, entry);
-    let data: Array<number> = [];
+    const propDataPtr = this._propDataPtr(entry);
+    const propDataLen = GameObject._propDataLen(this.state, entry);
+    const data: Array<number> = [];
     for (let i = 0; i < propDataLen; i++) {
       data.push(this.state.getByte(propDataPtr + i));
     }
     return data.map((el) => hex(el)).join(" ");
   }
   dump(indent = 0) {
-    let _indent = " . ".repeat(indent);
+    const _indent = " . ".repeat(indent);
 
     console.log(`${_indent}[${this.objnum}] "${this.name}"`);
     console.log(`${_indent}  Properties:`);
     let entry = this._firstPropEntry();
     for (;;) {
-      let propNum = this._propEntryNum(entry);
+      const propNum = this._propEntryNum(entry);
       if (propNum === 0) {
         break;
       }
@@ -65,7 +65,7 @@ export default class GameObject {
     );
   }
   set parent(po) {
-    let pobjnum = po === null ? 0 : po.objnum;
+    const pobjnum = po === null ? 0 : po.objnum;
     if (this.state._version <= 3) {
       this.state.setByte(this.objaddr + 4, pobjnum);
     } else {
@@ -80,7 +80,7 @@ export default class GameObject {
     );
   }
   set child(co) {
-    let cobjnum = co === null ? 0 : co.objnum;
+    const cobjnum = co === null ? 0 : co.objnum;
     if (this.state._version <= 3) {
       this.state.setByte(this.objaddr + 6, cobjnum);
     } else {
@@ -95,7 +95,7 @@ export default class GameObject {
     );
   }
   set sibling(so) {
-    let sobjnum = so === null ? 0 : so.objnum;
+    const sobjnum = so === null ? 0 : so.objnum;
     if (this.state._version <= 3) {
       this.state.setByte(this.objaddr + 5, sobjnum);
     } else {
@@ -118,8 +118,8 @@ export default class GameObject {
         throw new Error("attribute number out of range");
       }
     }
-    let byte_index = Math.floor(attr / 8);
-    let value = this.state.getByte(this.objaddr + byte_index);
+    const byte_index = Math.floor(attr / 8);
+    const value = this.state.getByte(this.objaddr + byte_index);
     return (value & (0x80 >> (attr & 7))) !== 0;
   }
   setAttribute(attr: number) {
@@ -132,7 +132,7 @@ export default class GameObject {
         throw new Error("attribute number out of range");
       }
     }
-    let byte_index = Math.floor(attr / 8);
+    const byte_index = Math.floor(attr / 8);
     let value = this.state.getByte(this.objaddr + byte_index);
     value |= 0x80 >> (attr & 7);
     this.state.setByte(this.objaddr + byte_index, value);
@@ -147,7 +147,7 @@ export default class GameObject {
         throw new Error("attribute number out of range");
       }
     }
-    let byte_index = Math.floor(attr / 8);
+    const byte_index = Math.floor(attr / 8);
     let value = this.state.getByte(this.objaddr + byte_index);
     value &= ~(0x80 >> (attr & 7));
     this.state.setByte(this.objaddr + byte_index, value);
@@ -194,8 +194,8 @@ export default class GameObject {
   }
 
   _propEntryNum(entryAddr: Address) {
-    let mask = this.state._version <= 3 ? 0x1f : 0x3f;
-    let sizeByte = this.state.getByte(entryAddr);
+    const mask = this.state._version <= 3 ? 0x1f : 0x3f;
+    const sizeByte = this.state.getByte(entryAddr);
     return sizeByte & mask;
   }
 
@@ -223,7 +223,7 @@ export default class GameObject {
     if (this.state._version <= 3) {
       return propAddr + 1;
     } else {
-      let size = this.state.getByte(propAddr);
+      const size = this.state.getByte(propAddr);
       if (!(size & 0x80)) {
         return propAddr + 1;
       } else {
@@ -233,9 +233,9 @@ export default class GameObject {
   }
 
   _firstPropEntry() {
-    let addr = this.propertyTableAddr;
+    const addr = this.propertyTableAddr;
     // skip the name
-    let nameLen = this.state.getByte(addr);
+    const nameLen = this.state.getByte(addr);
     return addr + 1 + 2 * nameLen;
   }
 
@@ -253,11 +253,11 @@ export default class GameObject {
   }
 
   getProperty(prop: number) {
-    let propAddr = this._getPropEntry(prop);
+    const propAddr = this._getPropEntry(prop);
     if (propAddr === null) {
       throw new Error("default property values not supported");
     }
-    let propLen = GameObject._propDataLen(this.state, propAddr);
+    const propLen = GameObject._propDataLen(this.state, propAddr);
     switch (propLen) {
       case 1:
         return this.state.getByte(this._propDataPtr(propAddr));
@@ -269,11 +269,11 @@ export default class GameObject {
   }
 
   putProperty(prop: number, value: number) {
-    let propAddr = this._getPropEntry(prop);
+    const propAddr = this._getPropEntry(prop);
     if (propAddr === 0) {
       throw new Error(`missing property ${prop}`);
     }
-    let propLen = GameObject._propDataLen(this.state, propAddr);
+    const propLen = GameObject._propDataLen(this.state, propAddr);
     switch (propLen) {
       case 1:
         return this.state.setByte(this._propDataPtr(propAddr), value & 0xff);
@@ -285,7 +285,7 @@ export default class GameObject {
   }
 
   getPropertyAddress(prop: number) {
-    let propAddr = this._getPropEntry(prop);
+    const propAddr = this._getPropEntry(prop);
     if (propAddr === 0) {
       return 0;
     }
@@ -300,7 +300,7 @@ export default class GameObject {
     if (dataAddr === 0) {
       return 0;
     }
-    let entry = GameObject.entryFromDataPtr(dataAddr);
+    const entry = GameObject.entryFromDataPtr(dataAddr);
 
     return GameObject._propDataLen(state, entry);
   }

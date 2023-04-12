@@ -1,6 +1,4 @@
 import type Game from "./ebozz.js";
-import type GameObject from "./GameObject.js";
-import Log from "./log.js";
 
 export type FIXME = unknown;
 

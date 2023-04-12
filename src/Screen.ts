@@ -117,26 +117,26 @@ export class ScreenBase implements Screen {
     this.log.debug(`not implemented: ${this.id} getInputFromUser`);
   }
 
-  print(game: Game, str: string) {
+  print(_game: Game, _str: string) {
     this.log.debug(`not implemented: ${this.id} print`);
   }
 
-  splitWindow(game: Game, lines: number) {
+  splitWindow(_game: Game, lines: number) {
     this.log.debug(`not implemented: ${this.id} splitWindow lines=${lines}`);
   }
 
-  setOutputWindow(game: Game, windowId: number) {
+  setOutputWindow(_game: Game, windowId: number) {
     this.log.debug(
       `not implemented: ${this.id} setOutputWindow windowId=${windowId}`
     );
   }
 
-  getOutputWindow(game: Game) {
+  getOutputWindow(_game: Game) {
     this.log.debug(`not implemented: ${this.id} getOutputWindow`);
     return 0;
   }
 
-  clearWindow(game: Game, windowId: number) {
+  clearWindow(_game: Game, windowId: number) {
     this.log.debug(
       `not implemented: ${this.id} clearWindow windowId=${windowId}`
     );

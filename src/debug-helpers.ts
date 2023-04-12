@@ -18,9 +18,9 @@ export function dumpHeader(s: Game) {
 }
 
 export function dumpObjectTable(s: Game) {
-  let objects_without_parents: Array<GameObject> = [];
+  const objects_without_parents: Array<GameObject> = [];
   for (let i = 1; i < 255; i++) {
-    let o = s.getObject(i);
+    const o = s.getObject(i);
     if (o === null) {
       continue;
     }
@@ -36,8 +36,8 @@ export function dumpObjectTable(s: Game) {
 export function dumpDictionary(s: Game) {
   console.log("dictionary:");
   let p = s._dict;
-  let num_sep = s.getByte(p++);
-  let sep_zscii: Array<ZSCII> = [];
+  const num_sep = s.getByte(p++);
+  const sep_zscii: Array<ZSCII> = [];
   for (let i = 0; i < num_sep; i++) {
     sep_zscii.push(s.getByte(p++));
   }
@@ -46,12 +46,12 @@ export function dumpDictionary(s: Game) {
     `Separators: ${sep_zscii.map((ch) => String.fromCharCode(ch)).join(" ")}`
   );
 
-  let entry_length = s.getByte(p++);
-  let num_entries = s.getWord(p);
+  const entry_length = s.getByte(p++);
+  const num_entries = s.getWord(p);
   p += 2;
 
   for (let i = 0; i < num_entries; i++) {
-    let entry_text = zstringToAscii(s, s.getZString(p), false);
+    const entry_text = zstringToAscii(s, s.getZString(p), false);
     console.log(
       ` [${i}] ${entry_text} ${hex(s.getWord(p))} ${hex(s.getWord(p + 2))}`
     );
@@ -62,17 +62,17 @@ export function dumpDictionary(s: Game) {
 }
 
 export function dumpParsebuffer(s: Game, parsebuffer: number) {
-  let max = s.getByte(parsebuffer);
+  const max = s.getByte(parsebuffer);
   parsebuffer++;
-  let count = s.getByte(parsebuffer);
+  const count = s.getByte(parsebuffer);
   parsebuffer++;
   s._log.debug(` max = ${max}, count = ${count} tokens = [`);
   for (let i = 0; i < count; i++) {
-    let addr = s.getWord(parsebuffer);
+    const addr = s.getWord(parsebuffer);
     parsebuffer += 2;
-    let length = s.getByte(parsebuffer);
+    const length = s.getByte(parsebuffer);
     parsebuffer++;
-    let from = s.getByte(parsebuffer);
+    const from = s.getByte(parsebuffer);
     parsebuffer++;
     s._log.debug(` (${hex(addr)}, ${hex(from)}, ${hex(length)})`);
   }

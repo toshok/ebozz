@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier -w package.json src/**",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint src/**",
     "ebozz": "node dist/console",
     "slackbot": "node dist/slack",
     "zork1": "node dist/console tests/zork1.dat",

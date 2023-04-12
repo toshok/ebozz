@@ -1,7 +1,7 @@
 import { ZString } from "./types.js";
 import Game from "./ebozz.js";
 
-let alphabet_table = [
+const alphabet_table = [
   /* A0 */ "abcdefghijklmnopqrstuvwxyz",
   /* A1 */ "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   /* A2 */ " \n0123456789.,!?_#'\"/\\-:()",
@@ -25,9 +25,9 @@ export default function zstringToAscii(
     }
   }
 
-  let rv: Array<string> = [];
+  const rv: Array<string> = [];
   for (let i = 0; i < zstr.length; i++) {
-    let z = zstr[i];
+    const z = zstr[i];
     if (z < 6) {
       switch (z) {
         case 0:
@@ -36,9 +36,9 @@ export default function zstringToAscii(
         case 1:
         case 2:
         case 3: {
-          let x = zstr[++i];
-          let entry = 32 * (z - 1) + x;
-          let abbrev_addr = s.getWord(s._abbrevs + entry * 2) * 2;
+          const x = zstr[++i];
+          const entry = 32 * (z - 1) + x;
+          const abbrev_addr = s.getWord(s._abbrevs + entry * 2) * 2;
           rv.push(zstringToAscii(s, s.getZString(abbrev_addr), false));
           break;
         }
@@ -50,10 +50,10 @@ export default function zstringToAscii(
     } else if (z == 6 && alphabet === 2) {
       // XXX Z-character 6 from A2 means that the two subsequent Z-characters specify a ten-bit ZSCII character code: the next Z-character gives the top 5 bits and the one after the bottom 5.
       // we ignore for now.
-      let z1 = zstr[++i];
-      let z2 = zstr[++i];
+      const z1 = zstr[++i];
+      const z2 = zstr[++i];
 
-      let combined_char = (z1 << 5) + z2;
+      const combined_char = (z1 << 5) + z2;
       rv.push(String.fromCharCode(combined_char));
       alphabet = 0;
     } else {
