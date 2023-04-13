@@ -48,6 +48,31 @@ enum KnownGlobals {
   Minutes = 2,
 }
 
+enum HeaderLocation {
+  Version = 0x00,
+  Flags1 = 0x01,
+  HighMemBase = 0x04,
+  InitialPC = 0x06,
+  Dictionary = 0x08,
+  ObjectTable = 0x0a,
+  GlobalVariables = 0x0c,
+  StaticMemBase = 0x0e,
+  Flags2 = 0x10,
+  AbbreviationsTable = 0x18,
+
+  InterpreterNumber = 0x1e,
+  InterpreterVersion = 0x1f,
+
+  ScreenHeightInLines = 0x20,
+  ScreenWidthInChars = 0x21,
+  ScreenWidthInUnits = 0x22,
+  ScreenHeightInUnits = 0x24,
+  // more version 5/6 stuff after this
+
+  RoutinesOffset = 0x28,
+  StaticStringsOffset = 0x2a,
+}
+
 export default class Game {
   private _pc: Address;
   private _stack: Array<number>;
@@ -83,35 +108,71 @@ export default class Game {
     this._quit = false;
     this._stack = [];
     this._callstack = [];
-    this._version = this.getByte(0x00);
-    this._highmem = this.getByte(0x04);
-    this._global_vars = this.getWord(0x0c);
-    this._abbrevs = this.getWord(0x18);
-    this._object_table = this.getWord(0x0a);
-    this._dict = this.getWord(0x08);
+    this._version = this.getByte(HeaderLocation.Version);
+    this._highmem = this.getByte(HeaderLocation.HighMemBase);
+    this._global_vars = this.getWord(HeaderLocation.GlobalVariables);
+    this._abbrevs = this.getWord(HeaderLocation.AbbreviationsTable);
+    this._object_table = this.getWord(HeaderLocation.ObjectTable);
+    this._dict = this.getWord(HeaderLocation.Dictionary);
 
     this._log.info(`game version: ${this._version}`);
 
     if (this._version === 6 || this._version === 7) {
-      this._routine_offset = this.getWord(0x28);
-      this._strings_offset = this.getWord(0x2a);
+      this._routine_offset = this.getWord(HeaderLocation.RoutinesOffset);
+      this._strings_offset = this.getWord(HeaderLocation.StaticStringsOffset);
     }
 
     this._game_objects = [];
 
     // tell the game about our screen size
     const { rows, cols } = screen.getSize();
-    this._mem[0x20] = rows;
-    this._mem[0x21] = cols;
+    this._mem[HeaderLocation.ScreenHeightInLines] = rows;
+    this._mem[HeaderLocation.ScreenWidthInChars] = cols;
 
     // tell the game about our font size
     // turn off split screen
 
-    // tell the game some things about our capabilities
-    if (this._version >= 4) {
-      // we support all the things.  XXX(toshok) this should depend on the screen?
-      this.setByte(0x01, 0xff);
+    // tell the game some things about our capabilities by setting our flags in
+    // the header.
+    const screenCapabilities = this._screen.getCapabilities();
+    let flags1 = this.getByte(HeaderLocation.Flags1);
+    if (this._version <= 3) {
+      // bits 4/5/6 are the ones we'll be filling in, so clear them first
+      flags1 &= 0b10001111;
+      if (screenCapabilities.hasDisplayStatusBar) {
+        flags1 |= 0b00010000; // bit 4
+      }
+      if (screenCapabilities.hasSplitWindow) {
+        flags1 |= 0b00100000; // bit 5
+      }
+      // XXX for now always leave bit 6 cleared, which signals that a variable
+      // width font is not the default.
+    } /* this._version >= 4 */ else {
+      // we're filling in all bits but bit 6, so clear them first
+      flags1 &= 0b01000000;
+      if (screenCapabilities.hasColors) {
+        flags1 |= 0b00000001; // bit 0
+      }
+      if (screenCapabilities.hasPictures) {
+        flags1 |= 0b00000010; // bit 1
+      }
+      if (screenCapabilities.hasBold) {
+        flags1 |= 0b00000100; // bit 2
+      }
+      if (screenCapabilities.hasItalic) {
+        flags1 |= 0b00001000; // bit 3
+      }
+      if (screenCapabilities.hasFixedPitch) {
+        flags1 |= 0b00010000; // bit 4
+      }
+      if (screenCapabilities.hasSound) {
+        flags1 |= 0b00100000; // bit 5
+      }
+      if (screenCapabilities.hasTimedKeyboardInput) {
+        flags1 |= 0b01000000; // bit 7
+      }
     }
+    this.setByte(HeaderLocation.Flags1, flags1);
 
     // get the word separators out of the dictionary here so we don't have to do it
     // every time we tokenise below.
@@ -347,7 +408,7 @@ export default class Game {
   }
 
   execute() {
-    this._pc = this.getWord(6);
+    this._pc = this.getWord(HeaderLocation.InitialPC);
     this.executeLoop();
   }
 
@@ -1095,12 +1156,8 @@ export default class Game {
       return;
     }
 
-    let isScoreGame;
-    if (this._version < 3) {
-      isScoreGame = true;
-    } else {
-      isScoreGame = false; // (this.flags1 & 0x01) != 0;
-    }
+    const isScoreGame =
+      this._version < 3 || (this.getByte(HeaderLocation.Flags1) & 0x02) == 0;
 
     const location = this.getWord(
       this._global_vars + 2 * KnownGlobals.Location

@@ -731,6 +731,8 @@ function sread(
     `sread max_input=${max_input}, text=${textBuffer}, parse=${parseBuffer}, time=${time}, routine=${routine}`
   );
 
+  s.updateStatusBar();
+
   // XXX(toshok) we need to handle the initial contents of the buffer (only Shogun and Zork Zero use it?)
   throw new SuspendForUserInput({
     keyPress: false,

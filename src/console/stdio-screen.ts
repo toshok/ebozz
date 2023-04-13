@@ -41,6 +41,9 @@ export default class StdioScreen extends ScreenBase {
       hasFixedPitch: false,
       hasSplitWindow: false,
       hasDisplayStatusBar: false,
+      hasPictures: false,
+      hasSound: false,
+      hasTimedKeyboardInput: false,
     };
   }
 

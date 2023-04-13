@@ -62,6 +62,9 @@ class Window {
       hasFixedPitch: false,
       hasSplitWindow: true,
       hasDisplayStatusBar: true,
+      hasPictures: false,
+      hasSound: false,
+      hasTimedKeyboardInput: true,
     };
   }
 

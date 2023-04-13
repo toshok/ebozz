@@ -68,6 +68,9 @@ export type Capabilities = {
 
   hasSplitWindow: boolean;
   hasDisplayStatusBar: boolean;
+  hasPictures: boolean;
+  hasSound: boolean;
+  hasTimedKeyboardInput: boolean;
 };
 
 export interface Screen {
@@ -250,6 +253,9 @@ export class ScreenBase implements Screen {
       hasFixedPitch: false,
       hasSplitWindow: false,
       hasDisplayStatusBar: false,
+      hasPictures: false,
+      hasSound: false,
+      hasTimedKeyboardInput: false,
     };
   }
 }
