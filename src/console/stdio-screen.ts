@@ -8,6 +8,7 @@ import {
   TextStyle,
   BufferMode,
   ScreenSize,
+  Capabilities,
 } from "../Screen.js";
 import type Game from "../ebozz.js";
 
@@ -31,8 +32,25 @@ export default class StdioScreen extends ScreenBase {
     };
   }
 
+  getCapabilities(): Capabilities {
+    return {
+      hasColors: true,
+      hasBold: true,
+      hasItalic: false,
+      hasReverseVideo: true,
+      hasFixedPitch: false,
+      hasSplitWindow: false,
+      hasDisplayStatusBar: false,
+    };
+  }
+
   getInputFromUser(game: Game, input_state: InputState) {
     const input = readline.question("");
+    game.continueAfterUserInput(input_state, input);
+  }
+
+  getKeyFromUser(game: Game, input_state: InputState) {
+    const input = readline.keyIn("", { hideEchoBack: true });
     game.continueAfterUserInput(input_state, input);
   }
 

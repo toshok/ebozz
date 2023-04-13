@@ -59,7 +59,19 @@ export type ScreenSize = {
   cols: number;
 };
 
+export type Capabilities = {
+  hasColors: boolean;
+  hasBold: boolean;
+  hasItalic: boolean;
+  hasReverseVideo: boolean;
+  hasFixedPitch: boolean;
+
+  hasSplitWindow: boolean;
+  hasDisplayStatusBar: boolean;
+};
+
 export interface Screen {
+  getCapabilities(): Capabilities;
   getInputFromUser(game: Game, input_state: InputState): void;
   getKeyFromUser(game: Game, input_state: InputState): void;
   print(game: Game, str: string): void;
@@ -98,6 +110,7 @@ export interface Screen {
   ): void;
   selectInputStream(game: Game, streamId: number): void;
   getSize(): ScreenSize;
+  updateStatusBar(lhs: string, rhs: string): void;
 }
 
 export class ScreenBase implements Screen {
@@ -219,5 +232,24 @@ export class ScreenBase implements Screen {
   getSize(): ScreenSize {
     this.log.debug(`not implemented: ${this.id} getSize`);
     return { rows: 25, cols: 80 };
+  }
+
+  updateStatusBar(lhs: string, rhs: string): void {
+    this.log.debug(
+      `not implemented: ${this.id} updateStatusBar lhs=${lhs} rhs=${rhs}`
+    );
+  }
+
+  getCapabilities(): Capabilities {
+    this.log.debug(`not implemented: ${this.id} getCapabilities`);
+    return {
+      hasColors: false,
+      hasBold: false,
+      hasItalic: false,
+      hasReverseVideo: false,
+      hasFixedPitch: false,
+      hasSplitWindow: false,
+      hasDisplayStatusBar: false,
+    };
   }
 }

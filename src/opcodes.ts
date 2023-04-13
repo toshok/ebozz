@@ -613,13 +613,7 @@ function new_line(s: Game) {
 }
 
 function show_status(s: Game) {
-  if (s._version >= 4) {
-    return;
-  }
-  //   let location = s.getWord(s._global_vars + 0);
-  //   let score = s.getWord(s._global_vars + 2); // if we're supposed to show time,
-  //   let moves = s.getWord(s._global_vars + 4); // both of these contain the time.
-  // XXX(toshok) more here.
+  s.updateStatusBar();
 }
 
 function print(s: Game) {

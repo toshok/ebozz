@@ -7,6 +7,7 @@ import {
   TextStyle,
   Color,
   colorToString,
+  Capabilities,
 } from "../Screen.js";
 import type Game from "../ebozz.js";
 import { InputState } from "../types.js";
@@ -50,6 +51,18 @@ class Window {
     this.textBuffer = "";
 
     this.clear();
+  }
+
+  getCapabilities(): Capabilities {
+    return {
+      hasColors: true,
+      hasBold: true,
+      hasItalic: false,
+      hasReverseVideo: true,
+      hasFixedPitch: false,
+      hasSplitWindow: true,
+      hasDisplayStatusBar: true,
+    };
   }
 
   resize(top: number, height: number) {
@@ -427,5 +440,10 @@ export default class BlessedScreen extends ScreenBase {
 
   getSize(): ScreenSize {
     return { rows: this.screen.rows, cols: this.screen.cols };
+  }
+
+  updateStatusBar(lhs: string, rhs: string): void {
+    // ensure the status bar is visible, and fill it in
+    console.log(`updateStatusBar: ${lhs} ${rhs}`);
   }
 }

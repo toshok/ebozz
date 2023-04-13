@@ -35,6 +35,19 @@ enum InstructionForm {
   Extended = 3,
 }
 
+// some known globals addresses used to populate the status bar for versions 1
+// to 3.  globals 1 and 2 switch meaning depending on if the game is a "score
+// game" or a "time game".
+enum KnownGlobals {
+  Location = 0,
+  // for score games:
+  Score = 1,
+  NumTurns = 2,
+  // for time games:
+  Hours = 1,
+  Minutes = 2,
+}
+
 export default class Game {
   private _pc: Address;
   private _stack: Array<number>;
@@ -1075,5 +1088,40 @@ export default class Game {
     }
 
     dumpParsebuffer(this, parsebuffer);
+  }
+
+  updateStatusBar() {
+    if (this._version >= 4) {
+      return;
+    }
+
+    let isScoreGame;
+    if (this._version < 3) {
+      isScoreGame = true;
+    } else {
+      isScoreGame = false; // (this.flags1 & 0x01) != 0;
+    }
+
+    const location = this.getWord(
+      this._global_vars + 2 * KnownGlobals.Location
+    );
+    // we're going to fill in left and right sides of status bar
+    const lhs = this.getObject(location)?.name || "Unknown location";
+    let rhs: string;
+    if (isScoreGame) {
+      const score = this.getWord(this._global_vars + 2 * KnownGlobals.Score);
+      const moves = this.getWord(this._global_vars + 2 * KnownGlobals.NumTurns);
+
+      rhs = `Score: ${score}   Moves: ${moves}`;
+    } else {
+      const hours = this.getWord(this._global_vars + 2 * KnownGlobals.Hours);
+      const minutes = this.getWord(
+        this._global_vars + 2 * KnownGlobals.Minutes
+      );
+
+      rhs = `Time: ${hours}:${minutes}`;
+    }
+
+    this._screen.updateStatusBar(lhs, rhs);
   }
 }
