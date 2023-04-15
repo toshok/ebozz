@@ -11,6 +11,9 @@ import { toI16, toU16 } from "./cast16.js";
 // }
 
 type OpcodeFn = (g: Game, ...operands: Array<number>) => void;
+
+export type Opcode = { mnemonic: string; impl: OpcodeFn };
+
 function unimplemented(msg: string) {
   if (msg) {
     throw new Error(`unimplemented: ${msg}`);
@@ -18,27 +21,27 @@ function unimplemented(msg: string) {
   throw new Error("unimplemented");
 }
 
-function illegalOpcode() {
+function illegalOpcode(): Opcode {
   return opcode("???", () => {
     throw new Error("illegal opcode");
   });
 }
 
-function opcode(mnemonic: string, impl: OpcodeFn) {
+function opcode(mnemonic: string, impl: OpcodeFn): Opcode {
   return { mnemonic, impl };
 }
 
-function unimplementedOpcode(mnemonic: string) {
+function unimplementedOpcode(mnemonic: string): Opcode {
   return opcode(mnemonic, () => unimplemented(`opcode: ${mnemonic}`));
 }
 
-function nopcode() {
+function nopcode(): Opcode {
   return opcode("nop", () => {
     /* do nothing */
   });
 }
 
-function opcodeImpl(fn: OpcodeFn) {
+function opcodeImpl(fn: OpcodeFn): Opcode {
   return opcode(fn.name, fn);
 }
 

@@ -135,6 +135,8 @@ export default class BlessedScreen extends ScreenBase {
   private screen: blessed.Widgets.Screen;
   private windows: Array<Window>;
   private outputWindow: number;
+  statusBarVisible: boolean;
+  statusBarBox: blessed.Widgets.TextElement;
 
   constructor(log: Log) {
     super(log, "BlessedScreen");
@@ -357,6 +359,10 @@ export default class BlessedScreen extends ScreenBase {
   }
 
   splitWindow(game: Game, lines: number): void {
+    if (this.statusBarVisible) {
+      throw new Error("cannot split the screen when we have a status bar");
+    }
+
     if (lines === 0) {
       // unsplit the screen so box 1 takes up the full height
       this.unsplitWindow(game);
@@ -447,6 +453,29 @@ export default class BlessedScreen extends ScreenBase {
 
   updateStatusBar(lhs: string, rhs: string): void {
     // ensure the status bar is visible, and fill it in
-    console.log(`updateStatusBar: ${lhs} ${rhs}`);
+    if (!this.statusBarVisible) {
+      this.statusBarVisible = true;
+      this.statusBarBox = blessed.text({
+        parent: this.screen,
+        top: 0,
+        left: 0,
+        width: this.screen.cols,
+        height: 1,
+        tags: true,
+      });
+
+      this.windows[0].resize(
+        this.windows[0].top + 1,
+        this.windows[0].height - 1
+      );
+      this.windows[1].resize(
+        this.windows[1].top + 1,
+        this.windows[1].height - 1
+      );
+      this.screen.render();
+    }
+    const contents =
+      lhs + " ".repeat(this.screen.cols - lhs.length - rhs.length - 1) + rhs;
+    this.statusBarBox.setContent(`{inverse}${contents}{/inverse}`);
   }
 }

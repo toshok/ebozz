@@ -9,7 +9,7 @@ import type { Screen } from "./Screen.js";
 import GameObject from "./GameObject.js";
 import SuspendForUserInput from "./SuspendForUserInput.js";
 
-import { op0, op1, op2, op3, op4, opv } from "./opcodes.js";
+import { Opcode, op0, op1, op2, op3, op4, opv } from "./opcodes.js";
 import { toI16 } from "./cast16.js";
 import { hex, dumpParsebuffer } from "./debug-helpers.js";
 import Log from "./log.js";
@@ -451,7 +451,7 @@ export default class Game {
 
     let operandTypes: Array<number /* OperandType */> = [];
     let reallyVariable = false;
-    let form;
+    let form: InstructionForm;
 
     this._log.debug(`${op_pc.toString(16)}: opbyte = ${opcode}`);
     // console.error(`[DEBUG] ${op_pc.toString(16)}: opbyte = ${opcode}`);
@@ -504,22 +504,23 @@ export default class Game {
 
     const operands: Array<number> = [];
     for (const optype of operandTypes) {
-      if (optype === OperandType.Large) {
-        const op = this.readWord();
-        operands.push(op);
-      } else if (optype === OperandType.Small) {
-        const o = this.readByte();
-        operands.push(o);
-      } else if (optype === OperandType.Variable) {
-        const varnum = this.readByte();
-        const varval = this.loadVariable(varnum);
-        operands.push(varval);
-      } else {
-        throw new Error("XXX");
+      switch (optype) {
+        case OperandType.Large:
+          operands.push(this.readWord());
+          break;
+        case OperandType.Small:
+          operands.push(this.readByte());
+          break;
+        case OperandType.Variable:
+          const varnum = this.readByte();
+          operands.push(this.loadVariable(varnum));
+          break;
+        default:
+          throw new Error("XXX");
       }
     }
 
-    let op;
+    let op: Opcode;
     try {
       if (reallyVariable) {
         op = opv[opcode];
@@ -757,7 +758,7 @@ export default class Game {
   readBranchOffset(): [number, boolean] {
     const branchData = this.readByte();
     let off1 = branchData & 0x3f;
-    let offset;
+    let offset: number;
     if ((branchData & 0x40) == 0x40) {
       // 1 byte offset
       offset = off1;
@@ -1037,9 +1038,9 @@ export default class Game {
 
     let c;
     do {
-      let sep_addr;
-      let sep_count;
-      let separator;
+      let sep_addr: Address;
+      let sep_count: number;
+      let separator: number;
 
       addr1++;
 
@@ -1169,14 +1170,14 @@ export default class Game {
       const score = this.getWord(this._global_vars + 2 * KnownGlobals.Score);
       const moves = this.getWord(this._global_vars + 2 * KnownGlobals.NumTurns);
 
-      rhs = `Score: ${score}   Moves: ${moves}`;
+      rhs = `Score: ${score}   Moves: ${moves} `;
     } else {
       const hours = this.getWord(this._global_vars + 2 * KnownGlobals.Hours);
       const minutes = this.getWord(
         this._global_vars + 2 * KnownGlobals.Minutes
       );
 
-      rhs = `Time: ${hours}:${minutes}`;
+      rhs = `Time: ${hours}:${minutes} `;
     }
 
     this._screen.updateStatusBar(lhs, rhs);
