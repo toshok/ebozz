@@ -146,9 +146,6 @@ export default class BlessedScreen extends ScreenBase {
     });
     this.screen.title = "Ebozz";
 
-    this.screen.log(`this.screen.rows: ${this.screen.rows}`);
-    this.screen.log(`this.screen.cols: ${this.screen.cols}`);
-
     this.windows = [
       // start with window 0 taking up no space
       new Window(this.screen, this.screen.rows, 0),
@@ -215,39 +212,27 @@ export default class BlessedScreen extends ScreenBase {
 
     if (outputWindow.bufferMode === BufferMode.Buffered) {
       if (str === "\n") {
-        this.screen.log("flushing due to a newline");
         outputWindow.flushBuffer();
         return;
       }
 
       const paragraphs = str.split("\n");
-      this.screen.log(`paragraphs: ${JSON.stringify(paragraphs)}`);
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i];
         if (
           outputWindow.textBuffer.length + paragraph.length <=
           this.screen.cols
         ) {
-          this.screen.log(`paragraph "${paragraph}" fits on current line`);
           // we don't need to wrap this paragraph.  style it and either buffer it (if it's the last paragraph) or output it.
           if (i === paragraphs.length - 1) {
             if (paragraph.length > 0) {
-              this.screen.log(`buffering last paragraph: "${paragraph}"`);
               outputWindow.bufferText(paragraph);
             }
           } else {
-            this.screen.log(
-              `logging paragraph "${
-                outputWindow.styledBuffer + this.styleText(paragraph)
-              }"`
-            );
             outputWindow.bufferText(paragraph);
             outputWindow.flushBuffer();
           }
         } else {
-          this.screen.log(
-            `paragraph "${paragraph}" doesn't fit on current line`
-          );
           // we need to wrap this paragraph
           let text = "";
           let startIdx = 0;
@@ -266,14 +251,8 @@ export default class BlessedScreen extends ScreenBase {
               outputWindow.textBuffer.length + text.length + nextWord.length >
               this.screen.cols
             ) {
-              this.screen.log(
-                `logging wrapped line "${
-                  outputWindow.styledBuffer + this.styleText(text)
-                }"`
-              );
               outputWindow.bufferText(text);
               outputWindow.flushBuffer();
-              this.screen.log(`resetting text to "${nextWord.trimStart()}"`);
               text = nextWord.trimStart();
             } else {
               text += nextWord;
@@ -372,27 +351,12 @@ export default class BlessedScreen extends ScreenBase {
       this.windows[0].resize(lines, this.screen.rows - lines);
     }
 
-    this.screen.log("window configuration:");
-    this.screen.log(
-      `  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`
-    );
-    this.screen.log(
-      `  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`
-    );
-
     this.screen.render();
   }
 
   private unsplitWindow(_game: Game): void {
     this.windows[1].resize(0, this.screen.rows);
     this.windows[0].resize(this.screen.rows, 0);
-    this.screen.log("window configuration:");
-    this.screen.log(
-      `  window 0: top=${this.windows[0].box.top} height=${this.windows[0].box.height}`
-    );
-    this.screen.log(
-      `  window 1: top=${this.windows[1].box.top} height=${this.windows[1].box.height}`
-    );
     this.screen.render();
   }
 
