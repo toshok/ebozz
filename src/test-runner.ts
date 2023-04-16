@@ -6,10 +6,8 @@ import Game from "./ebozz.js";
 import { ScreenBase } from "./Screen.js";
 import { InputState, Storage } from "./types.js";
 
-const gameName = process.argv[2];
-
-const gameFile = `tests/${gameName}.dat`;
-const walkthroughFile = `tests/${gameName}.walkthrough`;
+const gameFile = process.argv[2];
+const walkthroughFile = process.argv[3];
 
 const walkthrough = fs.readFileSync(walkthroughFile, "utf8").split("\n");
 let command = 0;
