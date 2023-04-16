@@ -32,7 +32,11 @@
     "prepare": "husky install"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
-  "license": "ISC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/toshok/ebozz"
+  },
   "volta": {
     "node": "19.8.1",
     "yarn": "1.22.19"
