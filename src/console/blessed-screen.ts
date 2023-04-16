@@ -142,7 +142,6 @@ export default class BlessedScreen extends ScreenBase {
     super(log, "BlessedScreen");
     this.screen = blessed.screen({
       smartCSR: true,
-      log: "blessed.log",
     });
     this.screen.title = "Ebozz";
 
