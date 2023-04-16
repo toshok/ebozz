@@ -8,9 +8,8 @@ Anything <= version 3 should at least show text and respond to input.  I have ye
 
 ## Why?
 
-I wanted to play Trinity (version 4, so still not working), and wanted a task that felt smaller than some of the
-things I have to do for toshok/echojs.
+I wanted to play Trinity (version 4, so still not working), and wanted a task that felt smaller than some of the things I have to do for toshok/echojs.
 
 ## License
 
-do whatever you want with it.
+MIT.  do whatever you want with it.
