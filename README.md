@@ -5,7 +5,6 @@ ebozz is a Z-machine interpreter written in typescript.
 ## Building/playing
 
 ```
-$ yarn
 $ yarn build
 $ yarn fetch-games
 $ yarn zork1
