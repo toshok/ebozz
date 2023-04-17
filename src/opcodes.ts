@@ -21,9 +21,9 @@ function unimplemented(msg: string) {
   throw new Error("unimplemented");
 }
 
-function illegalOpcode(): Opcode {
+function illegalOpcode(num: number): Opcode {
   return opcode("???", () => {
-    throw new Error("illegal opcode");
+    throw new Error(`illegal opcode: ${num}`);
   });
 }
 
@@ -846,9 +846,15 @@ function print_table(
   }
 }
 
+function verify(s: Game) {
+  const [offset, condfalse] = s.readBranchOffset();
+  // XXX we are gullible and assume everything is okay.
+  s.doBranch(true, condfalse, offset);
+}
+
 function piracy(s: Game) {
   const [offset, condfalse] = s.readBranchOffset();
-  // we are gullible and assume everything is okay.
+  // XXX we are gullible and assume everything is okay.
   s.doBranch(true, condfalse, offset);
 }
 
@@ -902,9 +908,9 @@ export const op2 = [
 
   opcodeImpl(set_color),
   opcodeImpl(zThrow),
-  illegalOpcode(),
-  illegalOpcode(),
-  illegalOpcode(),
+  illegalOpcode(29),
+  illegalOpcode(30),
+  illegalOpcode(31),
 ];
 
 export const op1 = [
@@ -951,7 +957,7 @@ export const op0 = [
   opcodeImpl(new_line),
   opcodeImpl(show_status),
   opcodeImpl(zCatch),
-  unimplementedOpcode("verify"),
+  opcodeImpl(verify),
   unimplementedOpcode("extended"), // not actually an instruction
   opcodeImpl(piracy),
 ];
@@ -994,6 +1000,6 @@ export const opv = [
   opcodeImpl(check_arg_count),
 ];
 
-export const op3 = [illegalOpcode(), op2[1]];
+export const op3 = [illegalOpcode(-1), op2[1]];
 
-export const op4 = [illegalOpcode(), op2[1]];
+export const op4 = [illegalOpcode(-2), op2[1]];
