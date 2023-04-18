@@ -11,7 +11,7 @@
     "build": "tsc",
     "format": "prettier -w package.json src/**",
     "lint": "eslint src/**",
-    "prepare": "husky install && yarn build",
+    "prepare": "yarn build",
     "ebozz": "node dist/console",
     "slackbot": "node dist/slack",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",
