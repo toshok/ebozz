@@ -43,10 +43,10 @@ const b = fs.readFileSync(file);
 const log = new Log(parsed.debug);
 
 let screen;
-if (parsed.screen === "blessed") {
-  screen = new BlessedScreen(log);
-} else {
+if (parsed.screen === "stdio") {
   screen = new StdioScreen(log);
+} else {
+  screen = new BlessedScreen(log);
 }
 
 const storage = {
