@@ -1,4 +1,4 @@
-import type Game from "./ebozz.js";
+import type Game from "./Game.js";
 import type { ZSCII } from "./types.js";
 import type GameObject from "./GameObject.js";
 import zstringToAscii from "./zstringToAscii.js";

@@ -3,7 +3,7 @@ import Bot from "slackbots";
 import * as fs from "fs";
 import * as path from "path";
 
-import Game from "../ebozz.js";
+import Game from "../Game.js";
 import Log from "../log.js";
 import { InputState, SnapshotData } from "../types.js";
 import { ScreenBase } from "../Screen.js";

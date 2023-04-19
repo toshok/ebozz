@@ -1,4 +1,4 @@
-import type Game from "./ebozz.js";
+import type Game from "./Game.js";
 import type { Address } from "./types.js";
 import zstringToAscii from "./zstringToAscii.js";
 import { hex } from "./debug-helpers.js";

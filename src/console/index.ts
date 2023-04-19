@@ -3,7 +3,7 @@ import * as fs from "fs";
 import nopt from "nopt";
 
 import Log from "../log.js";
-import Game from "../ebozz.js";
+import Game from "../Game.js";
 import BlessedScreen from "./blessed-screen.js";
 import StdioScreen from "./stdio-screen.js";
 import {

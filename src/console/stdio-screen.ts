@@ -10,7 +10,7 @@ import {
   ScreenSize,
   Capabilities,
 } from "../Screen.js";
-import type Game from "../ebozz.js";
+import type Game from "../Game.js";
 
 export default class StdioScreen extends ScreenBase {
   private textStyle: TextStyle;

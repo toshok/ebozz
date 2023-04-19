@@ -9,7 +9,7 @@ import {
   colorToString,
   Capabilities,
 } from "../Screen.js";
-import type Game from "../ebozz.js";
+import type Game from "../Game.js";
 import { InputState } from "../types.js";
 import { toI16 } from "../cast16.js";
 

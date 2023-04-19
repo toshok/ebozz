@@ -1,5 +1,5 @@
 import { ZString } from "./types.js";
-import Game from "./ebozz.js";
+import Game from "./Game.js";
 
 const alphabet_table = [
   /* A0 */ "abcdefghijklmnopqrstuvwxyz",
