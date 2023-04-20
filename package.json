@@ -47,7 +47,8 @@
     "blessed": "^0.1.81",
     "chalk": "^5.2.0",
     "nopt": "^7.1.0",
-    "readline-sync": "^1.4.10"
+    "readline-sync": "^1.4.10",
+    "rimraf": "^5.0.0"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.21",

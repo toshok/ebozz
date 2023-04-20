@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import { rimrafSync } from "rimraf";
 
 import { InputState } from "../types.js";
 
@@ -45,23 +46,8 @@ export default class BotStorage {
   }
 
   gameStoppedInChannel(channelId: string) {
-    // this should rimraf the directory
-    const targetDir = this.directoryForChannel(channelId);
-    const gameIdPath = path.join(targetDir, "gameId");
-    const inputStatePath = path.join(targetDir, "inputState");
-    const snapshotPath = path.join(targetDir, "snapshot.dat");
-
-    try {
-      fs.unlinkSync(gameIdPath);
-    } catch (e) {}
-
-    try {
-      fs.unlinkSync(inputStatePath);
-    } catch (e) {}
-
-    try {
-      fs.unlinkSync(snapshotPath);
-    } catch (e) {}
+    // probably shouldn't be synchronous (we don't want to block everything if we block here)
+    rimrafSync(this.directoryForChannel(channelId));
   }
 
   stateForChannel(channelId: string) {

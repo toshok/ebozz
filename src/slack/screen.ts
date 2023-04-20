@@ -1,6 +1,6 @@
 import Game from "../Game.js";
 import Log from "../log.js";
-import { EbozzBot } from "./index.js";
+import EbozzBot from "./bot.js";
 import { InputState } from "../types.js";
 import { Capabilities, ScreenBase } from "../Screen.js";
 
@@ -30,7 +30,7 @@ export default class BotScreen extends ScreenBase {
 
   // game suspended waiting for user input
   getInputFromUser(game: Game, input_state: InputState) {
-    // console.log(`posting ${output_buffer}`);
+    console.log(`posting ${this.output_buffer}`);
     this.bot.postMessageToChannel(this.channelId, this.output_buffer);
     this.output_buffer = "";
     // console.log("setting input_state to", input_state);
@@ -45,11 +45,12 @@ export default class BotScreen extends ScreenBase {
 
   // output callback
   print(game: Game, str: string) {
+    console.log(`printing "${str}"`);
     this.output_buffer += str;
   }
 
   updateStatusBar(lhs: string, rhs: string): void {
-    this.bot.setTopic(this.channelId, `${lhs} | ${rhs}`);
+    this.bot.setTopic(this.channelId, `${this.gameId} | ${lhs} | ${rhs}`);
   }
 
   getCapabilities(): Capabilities {
