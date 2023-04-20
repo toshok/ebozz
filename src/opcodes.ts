@@ -534,6 +534,9 @@ function call_vs2(s: Game, routine: Address, ...args: Array<number>) {
 function call(s: Game, routine: Address, ...args: Array<number>) {
   const resultVar = s.readByte();
   if (routine === 0) {
+    s._log.debug(
+      `${hex(s.op_pc)} call ${hex(routine)} ${args} -> (${hex(resultVar)})`
+    );
     s.storeVariable(resultVar, 0);
     return;
   }

@@ -135,7 +135,7 @@ export default class EbozzBot {
 
         this.debugChannel(`starting game ${gameId} in channel ${channelId}`);
 
-        const log = new Log(false);
+        const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
           fs.readFileSync(GAMES[gameId].path),
           log,
@@ -156,7 +156,7 @@ export default class EbozzBot {
         const { gameId } = channelState;
         this.debugChannel(`restarting game ${gameId} in channel ${channelId}`);
 
-        const log = new Log(false);
+        const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
           fs.readFileSync(GAMES[gameId].path),
           log,
@@ -211,7 +211,7 @@ export default class EbozzBot {
       );
 
       if (inputState) {
-        const log = new Log(false);
+        const log = new Log(Boolean(process.env.DEBUG));
         const game = Game.fromSnapshot(
           snapshot,
           log,

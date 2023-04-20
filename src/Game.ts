@@ -4,6 +4,7 @@ import type {
   ZString,
   Storage,
   InputState,
+  SnapshotData,
 } from "./types.js";
 import type { Screen } from "./Screen.js";
 import GameObject from "./GameObject.js";
@@ -78,7 +79,6 @@ enum SnapshotChunkType {
   Stack = 2,
   Callstack = 3,
   Registers = 4,
-  GameObjects = 5,
 }
 export default class Game {
   private _pc: Address;
@@ -191,13 +191,12 @@ export default class Game {
     screen: Screen,
     storage: Storage
   ) {
-    const { mem, stack, callstack, pc, gameObjects } =
+    const { mem, stack, callstack, pc } =
       Game.readSnapshotFromBuffer(snapshotBuffer);
     const g = new Game(mem, log, screen, storage);
     g._stack = stack;
     g._callstack = callstack;
     g._pc = pc;
-    g._game_objects = gameObjects.map((objnum) => new GameObject(g, objnum));
     return g;
   }
 
@@ -231,22 +230,13 @@ export default class Game {
     b.writeUInt32LE(this._pc);
     buffers.push(b);
 
-    const gameObjectsString = JSON.stringify(
-      this._game_objects.map((o) => o.objnum)
-    );
-    buffers.push(
-      chunkHeader(SnapshotChunkType.GameObjects, gameObjectsString.length)
-    );
-    buffers.push(Buffer.from(gameObjectsString, "utf8"));
-
     return Buffer.concat(buffers);
   }
 
-  static readSnapshotFromBuffer(b: Buffer) {
+  static readSnapshotFromBuffer(b: Buffer): SnapshotData {
     let mem: Buffer | null = null;
     let stack: Array<number> | null = null;
     let callstack: Array<CallFrame> | null = null;
-    let gameObjects: Array<number> | null = null;
     let pc: number | null = null;
 
     let p = 0;
@@ -269,9 +259,6 @@ export default class Game {
           break;
         case SnapshotChunkType.Registers:
           pc = b.readUInt32LE(p);
-          break;
-        case SnapshotChunkType.GameObjects:
-          gameObjects = JSON.parse(b.toString("utf8", p, p + length));
           break;
         default:
           throw new Error(`unknown chunk type ${type}`);
@@ -311,13 +298,6 @@ export default class Game {
       pcToUse = pc;
     }
 
-    let gameObjectsToUse: Array<number>;
-    if (gameObjects === null) {
-      throw new Error("couldn't find game objects chunk in snapshot");
-    } else {
-      gameObjectsToUse = gameObjects;
-    }
-
     console.log(
       `at snapshot load time, mem is length ${memToUse.length}, and pc = ${pcToUse}`
     );
@@ -327,7 +307,6 @@ export default class Game {
       stack: stackToUse,
       callstack: callstackToUse,
       pc: pcToUse,
-      gameObjects: gameObjectsToUse,
     };
   }
 

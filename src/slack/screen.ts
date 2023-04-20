@@ -33,7 +33,9 @@ export default class BotScreen extends ScreenBase {
     console.log(`posting ${this.output_buffer}`);
     this.bot.postMessageToChannel(
       this.channelId,
-      "```\n" + this.output_buffer + "\n```"
+      this.output_buffer
+      // use this to get a code block to see all characters
+      // "```\n" + this.output_buffer + "\n```"
     );
     this.output_buffer = "";
     // console.log("setting input_state to", input_state);
@@ -48,7 +50,7 @@ export default class BotScreen extends ScreenBase {
 
   // output callback
   print(game: Game, str: string) {
-    console.log(`printing "${str}"`);
+    // console.log(`printing "${str}"`);
     this.output_buffer += str;
   }
 
@@ -65,10 +67,12 @@ export default class BotScreen extends ScreenBase {
       hasColors: false,
       hasBold: true,
       hasItalic: true,
-      hasReverseVideo: true,
+      hasReverseVideo: false,
       hasFixedPitch: true,
       hasSplitWindow: false,
-      hasDisplayStatusBar: true,
+      // XXX hasDisplayStatusBar should be true, but it causes `Error: illegal
+      // opcode: 29` in zork1 when opening the mailbox
+      hasDisplayStatusBar: false,
       hasPictures: false,
       hasSound: false,
       hasTimedKeyboardInput: false,
