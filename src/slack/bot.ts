@@ -22,13 +22,15 @@ const USAGE = `commands are:
 *help*: prints this
 `;
 
-function saveNotSupported() {
-  throw new Error("no save support in slackbot.");
-}
+const noSaveLoadSupport = {
+  saveSnapshot() {
+    throw new Error("no save support in slackbot.");
+  },
 
-function loadNotSupported(): SnapshotData {
-  throw new Error("no load support in slackbot.");
-}
+  loadSnapshot(): SnapshotData {
+    throw new Error("no load support in slackbot.");
+  },
+};
 
 function listAvailableGames() {
   let response = "Games available:\n";
@@ -138,10 +140,7 @@ export default class EbozzBot {
           fs.readFileSync(GAMES[gameId].path),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
-          {
-            saveSnapshot: saveNotSupported,
-            loadSnapshot: loadNotSupported,
-          }
+          noSaveLoadSupport
         );
 
         game.execute();
@@ -162,10 +161,7 @@ export default class EbozzBot {
           fs.readFileSync(GAMES[gameId].path),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
-          {
-            saveSnapshot: saveNotSupported,
-            loadSnapshot: loadNotSupported,
-          }
+          noSaveLoadSupport
         );
 
         game.execute();
@@ -220,10 +216,7 @@ export default class EbozzBot {
           snapshot,
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
-          {
-            saveSnapshot: saveNotSupported,
-            loadSnapshot: loadNotSupported,
-          }
+          noSaveLoadSupport
         );
 
         game.continueAfterUserInput(

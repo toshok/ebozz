@@ -73,6 +73,13 @@ enum HeaderLocation {
   StaticStringsOffset = 0x2a,
 }
 
+enum SnapshotChunkType {
+  Memory = 1,
+  Stack = 2,
+  Callstack = 3,
+  Registers = 4,
+  GameObjects = 5,
+}
 export default class Game {
   private _pc: Address;
   private _stack: Array<number>;
@@ -184,20 +191,21 @@ export default class Game {
     screen: Screen,
     storage: Storage
   ) {
-    const { mem, stack, callstack, pc } =
+    const { mem, stack, callstack, pc, gameObjects } =
       Game.readSnapshotFromBuffer(snapshotBuffer);
     const g = new Game(mem, log, screen, storage);
     g._stack = stack;
     g._callstack = callstack;
     g._pc = pc;
+    g._game_objects = gameObjects.map((objnum) => new GameObject(g, objnum));
     return g;
   }
 
   snapshotToBuffer(): Buffer {
     console.log(
-      `at snapshot time, mem is length ${this._mem.length}, and pc = ${this.pc}`
+      `at snapshot save time, mem is length ${this._mem.length}, and pc = ${this.pc}`
     );
-    const chunkHeader = (type: number, length: number): Buffer => {
+    const chunkHeader = (type: SnapshotChunkType, length: number): Buffer => {
       const b = Buffer.alloc(8);
       b.writeUInt32LE(type, 0);
       b.writeUInt32LE(length, 4);
@@ -205,21 +213,31 @@ export default class Game {
     };
 
     const buffers: Array<Buffer> = [];
-    buffers.push(chunkHeader(1, this._mem.length));
+    buffers.push(chunkHeader(SnapshotChunkType.Memory, this._mem.length));
     buffers.push(this._mem);
 
     const stackString = JSON.stringify(this._stack);
-    buffers.push(chunkHeader(2, stackString.length));
+    buffers.push(chunkHeader(SnapshotChunkType.Stack, stackString.length));
     buffers.push(Buffer.from(stackString, "utf8"));
 
     const callstackString = JSON.stringify(this._callstack);
-    buffers.push(chunkHeader(3, callstackString.length));
+    buffers.push(
+      chunkHeader(SnapshotChunkType.Callstack, callstackString.length)
+    );
     buffers.push(Buffer.from(callstackString, "utf8"));
 
-    buffers.push(chunkHeader(4, 4));
+    buffers.push(chunkHeader(SnapshotChunkType.Registers, 4));
     const b = Buffer.alloc(4);
     b.writeUInt32LE(this._pc);
     buffers.push(b);
+
+    const gameObjectsString = JSON.stringify(
+      this._game_objects.map((o) => o.objnum)
+    );
+    buffers.push(
+      chunkHeader(SnapshotChunkType.GameObjects, gameObjectsString.length)
+    );
+    buffers.push(Buffer.from(gameObjectsString, "utf8"));
 
     return Buffer.concat(buffers);
   }
@@ -228,38 +246,42 @@ export default class Game {
     let mem: Buffer | null = null;
     let stack: Array<number> | null = null;
     let callstack: Array<CallFrame> | null = null;
+    let gameObjects: Array<number> | null = null;
     let pc: number | null = null;
 
     let p = 0;
 
     const readChunk = () => {
-      const type = b.readUInt32LE(p);
+      const type = b.readUInt32LE(p) as SnapshotChunkType;
       p += 4;
       const length = b.readUInt32LE(p);
       p += 4;
 
       switch (type) {
-        case 1: // memory
+        case SnapshotChunkType.Memory:
           mem = Uint8Array.prototype.slice.call(b, p, p + length);
           break;
-        case 2: // stack
+        case SnapshotChunkType.Stack:
           stack = JSON.parse(b.toString("utf8", p, p + length));
           break;
-        case 3: // callstack
+        case SnapshotChunkType.Callstack:
           callstack = JSON.parse(b.toString("utf8", p, p + length));
           break;
-        case 4: // registers
+        case SnapshotChunkType.Registers:
           pc = b.readUInt32LE(p);
           break;
+        case SnapshotChunkType.GameObjects:
+          gameObjects = JSON.parse(b.toString("utf8", p, p + length));
+          break;
+        default:
+          throw new Error(`unknown chunk type ${type}`);
       }
       p += length;
     };
 
-    // we write four chunks so far
-    readChunk();
-    readChunk();
-    readChunk();
-    readChunk();
+    while (p < b.length) {
+      readChunk();
+    }
 
     let memToUse: Buffer;
     if (mem === null) {
@@ -289,8 +311,15 @@ export default class Game {
       pcToUse = pc;
     }
 
+    let gameObjectsToUse: Array<number>;
+    if (gameObjects === null) {
+      throw new Error("couldn't find game objects chunk in snapshot");
+    } else {
+      gameObjectsToUse = gameObjects;
+    }
+
     console.log(
-      `at snapshot time, mem is length ${memToUse.length}, and pc = ${pcToUse}`
+      `at snapshot load time, mem is length ${memToUse.length}, and pc = ${pcToUse}`
     );
 
     return {
@@ -298,6 +327,7 @@ export default class Game {
       stack: stackToUse,
       callstack: callstackToUse,
       pc: pcToUse,
+      gameObjects: gameObjectsToUse,
     };
   }
 

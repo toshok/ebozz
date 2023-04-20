@@ -2,7 +2,7 @@ import Game from "../Game.js";
 import Log from "../log.js";
 import EbozzBot from "./bot.js";
 import { InputState } from "../types.js";
-import { Capabilities, ScreenBase } from "../Screen.js";
+import { Capabilities, ScreenBase, ScreenSize } from "../Screen.js";
 
 import BotStorage from "./storage.js";
 
@@ -31,7 +31,10 @@ export default class BotScreen extends ScreenBase {
   // game suspended waiting for user input
   getInputFromUser(game: Game, input_state: InputState) {
     console.log(`posting ${this.output_buffer}`);
-    this.bot.postMessageToChannel(this.channelId, this.output_buffer);
+    this.bot.postMessageToChannel(
+      this.channelId,
+      "```\n" + this.output_buffer + "\n```"
+    );
     this.output_buffer = "";
     // console.log("setting input_state to", input_state);
     // console.log("and waiting until we get user input");
@@ -51,6 +54,10 @@ export default class BotScreen extends ScreenBase {
 
   updateStatusBar(lhs: string, rhs: string): void {
     this.bot.setTopic(this.channelId, `${this.gameId} | ${lhs} | ${rhs}`);
+  }
+
+  getSize(): ScreenSize {
+    return { cols: 80, rows: 255 /* 255 == infinite height */ };
   }
 
   getCapabilities(): Capabilities {
