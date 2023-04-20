@@ -441,4 +441,8 @@ export default class BlessedScreen extends ScreenBase {
       lhs + " ".repeat(this.screen.cols - lhs.length - rhs.length - 1) + rhs;
     this.statusBarBox.setContent(`{inverse}${contents}{/inverse}`);
   }
+
+  quit(): void {
+    process.exit(0);
+  }
 }

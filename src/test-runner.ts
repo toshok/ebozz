@@ -40,6 +40,10 @@ class TestRunnerScreen extends ScreenBase {
   print(game: Game, str: string) {
     process.stdout.write(str);
   }
+
+  quit() {
+    process.exit(0);
+  }
 }
 
 class TestRunnerStorage implements Storage {

@@ -159,4 +159,8 @@ export default class StdioScreen extends ScreenBase {
   getSize(): ScreenSize {
     return { cols: 80, rows: 255 /* 255 == infinite height */ };
   }
+
+  quit(): void {
+    process.exit(0);
+  }
 }

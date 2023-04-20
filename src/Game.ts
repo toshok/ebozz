@@ -423,7 +423,7 @@ export default class Game {
         this._op_pc = this._pc;
         this.executeInstruction();
       }
-      process.exit(0);
+      this._screen.quit();
     } catch (e) {
       if (e instanceof SuspendForUserInput) {
         // unwind before calling the screen input function

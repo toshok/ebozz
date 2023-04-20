@@ -78,4 +78,12 @@ export default class BotScreen extends ScreenBase {
       hasTimedKeyboardInput: false,
     };
   }
+
+  quit(): void {
+    this.storage.gameStoppedInChannel(this.channelId);
+    this.bot.postMessageToChannel(
+      this.channelId,
+      `stopped game ${this.gameId}.`
+    );
+  }
 }

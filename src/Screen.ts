@@ -114,6 +114,7 @@ export interface Screen {
   selectInputStream(game: Game, streamId: number): void;
   getSize(): ScreenSize;
   updateStatusBar(lhs: string, rhs: string): void;
+  quit(): void;
 }
 
 export class ScreenBase implements Screen {
@@ -257,5 +258,9 @@ export class ScreenBase implements Screen {
       hasSound: false,
       hasTimedKeyboardInput: false,
     };
+  }
+
+  quit() {
+    this.log.debug(`not implemented: ${this.id} quit`);
   }
 }
