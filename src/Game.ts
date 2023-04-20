@@ -369,9 +369,7 @@ export default class Game {
     if (!input_state.keyPress) {
       throw new Error("continueAfterKeyPress called for non-keypress");
     }
-    const timeoutId = setTimeout(() => {
-      clearTimeout(timeoutId);
-
+    setImmediate(() => {
       const { resultVar } = input_state;
       // XXX(toshok) this is almost certainly wrong, but until we support input that doesn't require the enter
       // key to be hit, feels like an okay compromise?
@@ -387,9 +385,7 @@ export default class Game {
     }
     // probably not fully necessary, but unwind back to the event loop before transfering
     // back to game code.
-    const timeoutId = setTimeout(() => {
-      clearTimeout(timeoutId);
-
+    setImmediate(() => {
       input = input.toLowerCase();
 
       const { textBuffer, parseBuffer, resultVar } = input_state;
@@ -451,9 +447,8 @@ export default class Game {
       process.exit(0);
     } catch (e) {
       if (e instanceof SuspendForUserInput) {
-        // use setTimeout so we fully unwind before calling the input_cb
-        const timeoutId = setTimeout(() => {
-          clearTimeout(timeoutId);
+        // unwind before calling the screen input function
+        setImmediate(() => {
           try {
             if (e.state.keyPress) {
               this._screen.getKeyFromUser(this, e.state);
