@@ -6,7 +6,7 @@
     "target": "ES2020",
     "sourceMap": true,
     "outDir": "dist",
-    // "noImplicitAny": true, // almost.  slackbots is lacking a type definition
+    // "noImplicitAny": true,
     "strictNullChecks": true
   }
 }
