@@ -2,7 +2,7 @@ import Game from "../Game.js";
 import Log from "../log.js";
 import { EbozzBot } from "./index.js";
 import { InputState } from "../types.js";
-import { ScreenBase } from "../Screen.js";
+import { Capabilities, ScreenBase } from "../Screen.js";
 
 import BotStorage from "./storage.js";
 
@@ -46,5 +46,24 @@ export default class BotScreen extends ScreenBase {
   // output callback
   print(game: Game, str: string) {
     this.output_buffer += str;
+  }
+
+  updateStatusBar(lhs: string, rhs: string): void {
+    this.bot.setTopic(this.channelId, `${lhs} | ${rhs}`);
+  }
+
+  getCapabilities(): Capabilities {
+    return {
+      hasColors: false,
+      hasBold: true,
+      hasItalic: true,
+      hasReverseVideo: true,
+      hasFixedPitch: true,
+      hasSplitWindow: false,
+      hasDisplayStatusBar: true,
+      hasPictures: false,
+      hasSound: false,
+      hasTimedKeyboardInput: false,
+    };
   }
 }

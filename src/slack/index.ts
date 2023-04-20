@@ -71,22 +71,37 @@ export class EbozzBot {
     this.storage = new BotStorage(`./slackbot-storage/${botToken}`);
   }
 
-  debugChannel(msg: string) {
-    this.app.client.chat.postMessage({
+  async debugChannel(msg: string) {
+    await this.app.client.chat.postMessage({
       channel: DEBUG_CHANNEL_NAME,
       text: `[debug] ${msg}`,
     });
   }
 
-  postMessageToChannel(channel: string, msg: string) {
-    this.app.client.chat.postMessage({
-      channel,
-      text: msg,
-    });
+  async postMessageToChannel(channel: string, msg: string) {
+    try {
+      await this.app.client.chat.postMessage({
+        channel,
+        text: msg,
+      });
+    } catch (e) {
+      this.debugChannel(`error posting message: ${e.message}`);
+    }
+  }
+
+  async setTopic(channel: string, topic: string) {
+    try {
+      await this.app.client.conversations.setTopic({
+        channel,
+        topic,
+      });
+    } catch (e) {
+      this.debugChannel(`error setting topic: ${e.message}`);
+    }
   }
 
   message = async ({ message, say }) => {
-    console.log("got message", JSON.stringify(message, null, 2));
+    // console.log("got message", JSON.stringify(message, null, 2));
 
     if (
       !this.isChatMessage(message) ||
@@ -132,7 +147,7 @@ export class EbozzBot {
 
         this.debugChannel(`starting game ${gameId} in channel ${channelId}`);
 
-        const log = new Log(true);
+        const log = new Log(false);
         const game = new Game(
           fs.readFileSync(GAMES[gameId].path),
           log,
@@ -156,7 +171,7 @@ export class EbozzBot {
         const { gameId } = channelState;
         this.debugChannel(`restarting game ${gameId} in channel ${channelId}`);
 
-        const log = new Log(true);
+        const log = new Log(false);
         const game = new Game(
           fs.readFileSync(GAMES[gameId].path),
           log,
@@ -213,7 +228,7 @@ export class EbozzBot {
       );
 
       if (inputState) {
-        const log = new Log(true);
+        const log = new Log(false);
         const game = Game.fromSnapshot(
           snapshot,
           log,
