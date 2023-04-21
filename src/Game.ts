@@ -851,6 +851,24 @@ export default class Game {
     return cur_frame.arg_count;
   }
 
+  // returns
+  //   <0 to mean the entry is before than the encoded token words
+  //   >0 to mean the entry is after than the encoded token words
+  //   0 to mean the entry is equal to the encoded token words
+  compareTokenWords(
+    entryAddress: Address,
+    encoded_token_words: Array<number>
+  ): number {
+    let c = this.getWord(entryAddress) - encoded_token_words[0];
+    if (c === 0) {
+      c = this.getWord(entryAddress + 2) - encoded_token_words[1];
+    }
+    if (this._version > 3 && c === 0) {
+      c = this.getWord(entryAddress + 4) - encoded_token_words[2];
+    }
+    return c;
+  }
+
   lookupToken(dict: number, encoded_token_words: Array<number>) {
     // skip the separators
     const num_sep = this.getByte(dict);
@@ -863,18 +881,13 @@ export default class Game {
     dict += 2;
     if (num_entries < 0) {
       // the entries aren't sorted, linear search
+      this._log.debug("linear search");
       const lower = 0;
       const upper = -num_entries - 1;
       while (lower <= upper) {
         const entry_addr = dict + lower * entry_len;
 
-        let c = this.getWord(entry_addr) - encoded_token_words[0];
-        if (c === 0) {
-          c = this.getWord(entry_addr + 2) - encoded_token_words[1];
-        }
-        if (this._version > 3 && c === 0) {
-          c = this.getWord(entry_addr + 4) - encoded_token_words[2];
-        }
+        const c = this.compareTokenWords(entry_addr, encoded_token_words);
         if (c === 0) {
           return entry_addr;
         }
@@ -883,28 +896,23 @@ export default class Game {
     }
 
     // sorted case, binary search
+    this._log.debug("binary search");
     let lower = 0;
     let upper = num_entries - 1;
     while (lower <= upper) {
       const cmp_entry = Math.floor((lower + upper) / 2);
       const entry_addr = dict + cmp_entry * entry_len;
 
-      let c = this.getWord(entry_addr) - encoded_token_words[0];
-      if (c === 0) {
-        c = this.getWord(entry_addr + 2) - encoded_token_words[1];
-      }
-      if (this._version > 3 && c === 0) {
-        c = this.getWord(entry_addr + 4) - encoded_token_words[2];
-      }
+      this._log.debug(`comparing against entry ${cmp_entry}`);
+      const c = this.compareTokenWords(entry_addr, encoded_token_words);
       if (c < 0) {
         // entry is < encoded, pick upper half
         lower = cmp_entry + 1;
       } else if (c > 0) {
         // entry is > encoded, pick lower half
         upper = cmp_entry - 1;
-      }
-      // entry === encoded, done.
-      else {
+      } else {
+        // entry === encoded, done.
         return entry_addr;
       }
     }
@@ -916,8 +924,8 @@ export default class Game {
     this._log.debug(`encodeToken(${text})`);
     const resolution = this._version > 3 ? 3 : 2;
 
-    // chop it off at 6 characters (the max)
-    text = text.slice(0, 6);
+    // chop it off at resolution*3 characters (the max for that version)
+    text = text.slice(0, resolution * 3);
     const zchars: Array<number> = [];
 
     for (let i = 0; i < text.length; i++) {
@@ -933,10 +941,11 @@ export default class Game {
       }
       zchars.push(charCode);
     }
-    while (zchars.length < 6) {
+    while (zchars.length < resolution * 3) {
       zchars.push(padding);
     }
 
+    this._log.debug(`zchars: ${JSON.stringify(zchars)}`);
     const zwords: Array<number> = [];
 
     for (let i = 0; i < resolution; i++) {
@@ -969,11 +978,15 @@ export default class Game {
     }
 
     const wordtext = inputbuffer.slice(start, end).toLowerCase();
-    const tokenword = this.encodeToken(wordtext);
-    //this._log.warn(`tokenise_word "${wordtext} (${hex(tokenword[0])},${hex(tokenword[1])})"`);
+    const tokenwords = this.encodeToken(wordtext);
+    this._log.warn(
+      `tokenise_word "${wordtext}" (${tokenwords
+        .map((tokenword) => hex(tokenword))
+        .join(",")})`
+    );
 
-    const token_addr = this.lookupToken(this._dict, tokenword);
-    //this._log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
+    const token_addr = this.lookupToken(this._dict, tokenwords);
+    this._log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
     if (token_addr !== 0) {
       const token_storage = 4 * count_tokens + 2 + parsebuffer;
       this.setByte(parsebuffer + 1, ++count_tokens);
@@ -1007,8 +1020,11 @@ export default class Game {
       wordZChars.push(String.fromCharCode(this.getByte(textBuffer + from + i)));
     }
 
-    const tokenword = this.encodeToken(wordZChars.join(""));
-    const token_addr = this.lookupToken(this._dict, tokenword);
+    const tokenwords = this.encodeToken(wordZChars.join(""));
+    const token_addr = this.lookupToken(dict, tokenwords);
+
+    this._log.warn(`address for ${wordZChars.join("")} == ${hex(token_addr)}`);
+
     if (token_addr !== 0 || !flag) {
       const token_storage = 4 * token_count + parseBuffer + 2;
       this.setWord(token_storage, token_addr);
