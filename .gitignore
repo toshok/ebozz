@@ -6,7 +6,6 @@ yarn-error.log
 slackbot-storage/
 gamefiles/
 .yarn/*
-!.yarn/cache
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
