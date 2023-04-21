@@ -15,6 +15,10 @@ const GAMES: Record<string, { name: string; path: string }> = {
     name: "The Hitchhiker's Guide To The Galaxy",
     path: "./gamefiles/hitchhiker-r59-s851108.z3",
   },
+  spellbreaker: {
+    name: "Spellbreaker",
+    path: "./gamefiles/spellbreaker-r87-s860904.z3",
+  },
   wishbringer: {
     name: "Wishbringer",
     path: "./gamefiles/wishbringer-r69-s850920.z3",
