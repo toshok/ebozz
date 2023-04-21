@@ -979,14 +979,7 @@ export default class Game {
 
     const wordtext = inputbuffer.slice(start, end).toLowerCase();
     const tokenwords = this.encodeToken(wordtext);
-    this._log.warn(
-      `tokenise_word "${wordtext}" (${tokenwords
-        .map((tokenword) => hex(tokenword))
-        .join(",")})`
-    );
-
     const token_addr = this.lookupToken(this._dict, tokenwords);
-    this._log.warn(`address for ${wordtext} == ${hex(token_addr)}`);
     if (token_addr !== 0) {
       const token_storage = 4 * count_tokens + 2 + parsebuffer;
       this.setByte(parsebuffer + 1, ++count_tokens);
@@ -1022,8 +1015,6 @@ export default class Game {
 
     const tokenwords = this.encodeToken(wordZChars.join(""));
     const token_addr = this.lookupToken(dict, tokenwords);
-
-    this._log.warn(`address for ${wordZChars.join("")} == ${hex(token_addr)}`);
 
     if (token_addr !== 0 || !flag) {
       const token_storage = 4 * token_count + parseBuffer + 2;
