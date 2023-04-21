@@ -91,6 +91,7 @@ export default class EbozzBot {
     if (
       !this.isChatMessage(message) ||
       !this.isChannelConversation(message) ||
+      this.isThreadMessage(message) ||
       this.isFromMe(message)
     ) {
       return;
@@ -268,6 +269,20 @@ export default class EbozzBot {
     }
 
     return message.text || "";
+  }
+
+  isThreadMessage(message: SlackMessage) {
+    if (
+      !(
+        message.subtype === undefined ||
+        message.subtype === "bot_message" ||
+        message.subtype === "file_share" ||
+        message.subtype === "thread_broadcast"
+      )
+    ) {
+      return false;
+    }
+    return message.thread_ts !== undefined;
   }
 
   isChatMessage(message: SlackMessage) {
