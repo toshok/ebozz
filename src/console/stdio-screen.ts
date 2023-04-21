@@ -54,7 +54,7 @@ export default class StdioScreen extends ScreenBase {
 
   getKeyFromUser(game: Game, input_state: InputState) {
     const input = readline.keyIn("", { hideEchoBack: true });
-    game.continueAfterUserInput(input_state, input);
+    game.continueAfterKeyPress(input_state, input);
   }
 
   applyStyles(str: string) {
