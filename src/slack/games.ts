@@ -16,7 +16,7 @@ const GAMES: Record<string, { name: string; path: string }> = {
     path: "./gamefiles/hitchhiker-r59-s851108.z3",
   },
   wishbringer: {
-    name: "Wishbringer (doesn't work currently)",
+    name: "Wishbringer",
     path: "./gamefiles/wishbringer-r69-s850920.z3",
   },
   trinity: {
