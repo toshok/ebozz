@@ -16,7 +16,7 @@
     "slackbot": "node dist/slack",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",
     "hhg": "node dist/console gamefiles/hitchhiker-r59-s851108.z3",
-    "lgp": "node dist/console gamefiles/leathergoddesses-r0-sXXXXXX.z3",
+    "lgop": "node dist/console gamefiles/leathergoddesses-r59-s860730.z3",
     "spellbreaker": "node dist/console gamefiles/spellbreaker-r87-s860904.z3",
     "stationfall": "node dist/console gamefiles/stationfall-r107-s870430.z3",
     "trinity": "node dist/console gamefiles/trinity-r15-s870628.z4",
