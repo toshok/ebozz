@@ -5,6 +5,7 @@ import GameObject from "./GameObject.js";
 import SuspendForUserInput from "./SuspendForUserInput.js";
 import { hex } from "./debug-helpers.js";
 import { toI16, toU16 } from "./cast16.js";
+import { randomInt, randomSeed } from "./random.js";
 
 // function isZasciiInput(c) {
 //   return c >= 32 && c <= 126; // XXX only ascii for now.
@@ -761,11 +762,10 @@ function random(s: Game, range: number) {
   s._log.debug(`random(${range})`);
   const resultVar = s.readByte();
   if (range <= 0) {
-    // (XXX) can't seed in JS?
+    randomSeed(`${range}`);
     s.storeVariable(resultVar, 0);
   } else {
-    const rv = Math.floor(Math.random() * range + 1);
-    s.storeVariable(resultVar, rv);
+    s.storeVariable(resultVar, randomInt(range));
   }
 }
 

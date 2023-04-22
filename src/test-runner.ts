@@ -5,6 +5,7 @@ import Log from "./log.js";
 import Game from "./Game.js";
 import { ScreenBase } from "./Screen.js";
 import { InputState, Storage } from "./types.js";
+import { randomSeed } from "./random.js";
 
 const gameFile = process.argv[2];
 const walkthroughFile = process.argv[3];
@@ -13,7 +14,7 @@ const walkthrough = fs.readFileSync(walkthroughFile, "utf8").split("\n");
 let command = 0;
 
 function getNextLine() {
-  let line;
+  let line: string;
   do {
     if (command === walkthrough.length) {
       return;
@@ -22,6 +23,10 @@ function getNextLine() {
   } while (line === "" || line[0] === "#");
   return line;
 }
+
+// first non-comment line must be the initial random seed
+const seed = getNextLine() || "";
+randomSeed(seed);
 
 class TestRunnerScreen extends ScreenBase {
   constructor(log: Log) {

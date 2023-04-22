@@ -2,6 +2,9 @@
 ##
 ## from http://www.oocities.org/timessquare/castle/2701/z1walk0.html
 
+# our random seed
+zork111-seed
+
 # Part 1  Surface and Jewelled Egg
 north
 north
@@ -50,4 +53,396 @@ turn off lamp
 west
 open trophy case
 put painting in trophy case
-close trophy case
+
+# Part 3   Troll, Cyclops and Thief; Coins, Chalice, Canary and Bauble
+take egg
+take sword
+open trapdoor
+down
+turn on lamp
+north
+kill troll with sword
+kill troll with sword
+kill troll with sword
+west
+south
+east
+up
+take bag of coins
+take skeleton key
+sw
+east
+south
+se
+Ulysses
+up
+give egg to thief
+down
+east
+east
+turn off lantern
+put bag of coins in trophy case
+drop sword
+take knife
+turn on lamp
+west
+west
+up
+kill the thief with the knife
+kill the thief with the knife
+kill the thief with the knife
+kill the thief with the knife
+kill the thief with the knife
+take egg
+take silver chalice
+take stiletto
+down
+east
+east
+turn off lamp
+take canary
+put egg in trophy case
+put silver chalice in trophy case
+east
+east
+north
+north
+climb tree
+wind up canary
+down
+get bauble
+south
+south
+east
+enter house
+west
+put golden canary in trophy case
+put bauble in trophy case
+put skeleton key in trophy case
+drop stiletto
+
+# Part 4   Evil Spirits; Platinum Bar, Ivory Torch, Coffin, Sceptre, and Crystal Skull
+drop knife
+take sword
+take rope
+open trapdoor
+down
+turn on lamp
+north
+east
+east
+drop rope
+east
+Echo
+take bar
+west
+drop bar
+north
+northeast
+east
+north
+take matches
+east
+take screwdriver
+take wrench
+press yellow button
+west
+south
+turn bolt with wrench
+down
+up
+south
+southwest
+south
+drop screwdriver
+drop wrench
+take rope
+southeast
+east
+tie rope to railing
+down
+take ivory torch
+turn off lantern
+down
+east
+open coffin
+take sceptre
+wave sceptre
+put sceptre in coffin
+drop torch
+drop matchbook
+drop sword
+drop stiletto
+drop skeleton key
+turn on lantern
+take coffin
+west
+south
+drop coffin
+north
+east
+take skeleto key
+take stiletto
+take sword
+take matchbook 
+take torch
+turn off lamp
+west
+take bell
+south
+take book
+take candles
+down
+down
+ring bell
+take candles
+light match
+light candles
+read the book
+south
+take skull
+north
+up
+north
+north
+north
+drop book
+drop candles
+drop matches
+take bar
+west
+west
+south
+up
+put skull in trophy case
+put bar in trophy case
+put torch in trophy case
+
+# Part 5   Pot of Gold and Scarab
+drop sword
+down
+turn on lamp
+north
+east
+east
+southeast
+east
+down
+down
+south
+take coffin
+pray
+turn lamp off
+east
+south
+east
+enter house
+west
+take sceptre
+put coffin in trophy case
+drop lamp
+take torch
+east
+east
+east
+east
+down
+down
+north
+wave sceptre
+take pot of gold
+east
+east
+east
+north
+north
+take shovel
+northeast
+dig in sand with shovel
+dig in sand with shovel
+dig in sand with shovel
+dig in sand with shovel
+take scarab
+southwest
+south
+south
+west
+west
+southwest
+up
+up
+northwest
+west
+west
+west
+put pot of gold in trophy case
+put scarab in trophy case
+put sceptre in trophy case
+drop shovel
+
+# Part 6   Crystal Trident, Trunk of Jewels, Emerald
+down
+north
+down
+east
+east
+south
+south
+rub the mirror
+east
+down
+take trident
+south
+take pump
+south
+take trunk of jewels
+south
+east
+down
+pump up boat
+get into boat
+launch
+look
+look
+look
+look
+look
+look
+look
+look
+look
+look
+take buoy
+east
+open buoy
+take emerald
+drop buoy
+exit boat
+south
+south
+west
+west
+southwest
+up
+up
+northwest
+west
+west
+west
+put trident in trophy case
+put trunk in trophy case
+put emerald in trophy case
+drop pump
+
+# Part 7   Jade Figurine, Bracelet, Diamond, Map
+take lamp
+take garlic
+take sword
+down
+north
+east
+east
+take screwdriver
+south
+south
+rub the mirror
+north
+west
+north
+west
+north
+drop garlic
+go east
+put torch in basket
+put screwdriver in basket
+north
+turn on lamp
+down
+east
+east
+northeast
+southeast
+southwest
+down
+down
+west
+east
+south
+take coal
+north
+up
+up
+north
+east
+south
+north
+up
+south
+put coal in basket
+lower basket
+north
+down
+east
+east
+northeast
+southeast
+southwest
+down
+down
+west
+drop lamp
+drop sword
+inventory
+west
+take torch
+take screwdriver
+take coal
+south
+open lid
+put coal in machine
+close lid
+turn switch with screwdriver
+open lid
+take diamond
+drop screwdriver
+north
+put diamond in basket
+put torch in basket
+east
+take lamp
+take sword
+east
+turn on lamp
+up
+up
+north
+east
+south
+north
+take bracelet
+up
+south
+raise basket
+take diamond
+take torch
+turn off lamp
+west
+take figurine
+south
+east
+south
+go down slide
+up
+put bracelet in trophy case
+put diamond in trophy case
+put figurine in trophy case
+put torch in trophy case
+put sword in trophy case
+take map
+look at map
+east
+east
+south
+west
+southwest
+enter barrow
