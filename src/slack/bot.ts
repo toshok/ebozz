@@ -4,9 +4,9 @@ import * as fs from "fs";
 import Game from "../Game.js";
 import Log from "../log.js";
 import { SnapshotData } from "../types.js";
+import GAMES from "../games.js";
 import BotScreen from "./screen.js";
 import BotStorage from "./storage.js";
-import GAMES from "./games.js";
 
 type SlackMessage = bolt.SlackEventMiddlewareArgs<"message">["message"];
 type SlackMessageWithText = SlackMessage & { text: string };

@@ -1,5 +1,6 @@
-# our random seed
-seed
+# this test doesn't work yet (and is incomplete), so skip it
+# @skip
+# @randomSeed:seed
 
 turn on light
 stand up

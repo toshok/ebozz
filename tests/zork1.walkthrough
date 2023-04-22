@@ -1,9 +1,9 @@
 ## zork1 walkthrough
 ##
 ## from http://www.oocities.org/timessquare/castle/2701/z1walk0.html
-
+#
 # our random seed
-zork111-seed
+# @randomSeed:zork111-seed
 
 # Part 1  Surface and Jewelled Egg
 north

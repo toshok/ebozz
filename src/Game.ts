@@ -122,7 +122,7 @@ export default class Game {
     this._object_table = this.getWord(HeaderLocation.ObjectTable);
     this._dict = this.getWord(HeaderLocation.Dictionary);
 
-    this._log.info(`game version: ${this._version}`);
+    this._log.debug(`game version: ${this._version}`);
 
     if (this._version === 6 || this._version === 7) {
       this._routine_offset = this.getWord(HeaderLocation.RoutinesOffset);
