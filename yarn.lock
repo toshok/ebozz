@@ -256,7 +256,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@slack/web-api@npm:^6.2.3, @slack/web-api@npm:^6.3.0, @slack/web-api@npm:^6.7.1":
+"@slack/web-api@npm:^6.2.3, @slack/web-api@npm:^6.3.0, @slack/web-api@npm:^6.7.1, @slack/web-api@npm:^6.8.1":
   version: 6.8.1
   resolution: "@slack/web-api@npm:6.8.1"
   dependencies:
@@ -1145,6 +1145,7 @@ __metadata:
   resolution: "ebozz@workspace:."
   dependencies:
     "@slack/bolt": ^3.13.0
+    "@slack/web-api": ^6.8.1
     "@types/blessed": ^0.1.21
     "@types/chalk": ^2.2.0
     "@types/node": ^18.15.11
