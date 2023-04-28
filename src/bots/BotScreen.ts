@@ -1,7 +1,11 @@
-import Game from "../Game.js";
-import Log from "../log.js";
-import { InputState } from "../types.js";
-import { Capabilities, ScreenBase, ScreenSize } from "../Screen.js";
+import {
+  Game,
+  Log,
+  InputState,
+  Capabilities,
+  ScreenBase,
+  ScreenSize,
+} from "../core/index.js";
 
 import { ChatBot } from "./types.js";
 import BotStorage from "./BotStorage.js";

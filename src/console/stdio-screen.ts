@@ -1,16 +1,16 @@
 import * as readline from "readline-sync";
 import chalk from "chalk";
-import Log from "../log.js";
-import type { InputState } from "../types.js";
 import {
+  Game,
+  Log,
+  InputState,
   ScreenBase,
   Color,
   TextStyle,
   BufferMode,
   ScreenSize,
   Capabilities,
-} from "../Screen.js";
-import type Game from "../Game.js";
+} from "../core/index.js";
 
 export default class StdioScreen extends ScreenBase {
   private textStyle: TextStyle;

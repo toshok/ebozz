@@ -3,9 +3,7 @@ import { UsersListResponse } from "@slack/web-api";
 
 import * as fs from "fs";
 
-import Game from "../../Game.js";
-import Log from "../../log.js";
-import { SnapshotData } from "../../types.js";
+import { Game, Log, SnapshotData } from "../../core/index.js";
 import GAMES from "../../games.js";
 import { ChatBot } from "../types.js";
 import BotScreen from "../BotScreen.js";

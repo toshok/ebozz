@@ -2,15 +2,16 @@
 import * as fs from "fs";
 import nopt from "nopt";
 
-import Log from "../log.js";
-import Game from "../Game.js";
-import BlessedScreen from "./blessed-screen.js";
-import StdioScreen from "./stdio-screen.js";
 import {
+  Log,
+  Game,
   dumpHeader,
   dumpDictionary,
   dumpObjectTable,
-} from "../debug-helpers.js";
+} from "../core/index.js";
+
+import BlessedScreen from "./blessed-screen.js";
+import StdioScreen from "./stdio-screen.js";
 
 const knownOpts = {
   debug: Boolean,

@@ -1,6 +1,6 @@
 import blessed from "blessed";
-import Log from "../log.js";
 import {
+  Log,
   ScreenBase,
   ScreenSize,
   BufferMode,
@@ -8,10 +8,10 @@ import {
   Color,
   colorToString,
   Capabilities,
-} from "../Screen.js";
-import type Game from "../Game.js";
-import { InputState } from "../types.js";
-import { toI16 } from "../cast16.js";
+  Game,
+  InputState,
+  toI16,
+} from "../core/index.js";
 
 class Window {
   screen: blessed.Widgets.Screen;

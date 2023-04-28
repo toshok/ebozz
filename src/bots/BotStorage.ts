@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { rimrafSync } from "rimraf";
 
-import { InputState } from "../types.js";
+import { InputState } from "../core/index.js";
 
 export default class BotStorage {
   private rootDir: string;

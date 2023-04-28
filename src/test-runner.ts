@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import * as fs from "fs";
 
-import Log from "./log.js";
-import Game from "./Game.js";
-import { ScreenBase } from "./Screen.js";
-import { InputState, Storage } from "./types.js";
-import { randomSeed } from "./random.js";
+import {
+  Game,
+  Log,
+  ScreenBase,
+  InputState,
+  Storage,
+  randomSeed,
+} from "./core/index.js";
 import GAMES from "./games.js";
 
 class Suite {
