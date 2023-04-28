@@ -73,13 +73,14 @@ export default class DiscordBot implements ChatBot {
     channel.send(msg);
   }
 
-  async setTopic(channelId: string, topic: string) {
+  async setTopic(channelId: string, _topic: string) {
     const channel = this.client.channels.cache.get(channelId);
     if (channel === undefined) {
       console.warn("channel undefined", channelId);
       return;
     }
-    channel.setTopic(topic);
+    // XXX(toshok) does discord not have an api for setting the topic?
+    // channel.setTopic(topic);
   }
 
   message = async (message: Message) => {
