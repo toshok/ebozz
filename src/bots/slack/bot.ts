@@ -1,4 +1,6 @@
 import bolt from "@slack/bolt";
+import { UsersListResponse } from "@slack/web-api";
+
 import * as fs from "fs";
 
 import Game from "../../Game.js";
@@ -9,6 +11,7 @@ import { ChatBot } from "../types.js";
 import BotScreen from "../BotScreen.js";
 import BotStorage from "../BotStorage.js";
 
+type SlackMember = NonNullable<UsersListResponse["members"]>[0];
 type SlackMessage = bolt.SlackEventMiddlewareArgs<"message">["message"];
 type SlackMessageWithText = SlackMessage & { text: string };
 
@@ -44,7 +47,7 @@ function listAvailableGames() {
 
 export default class Slackbot implements ChatBot {
   private app: bolt.App;
-  private user: any;
+  private user: SlackMember | undefined;
   private storage: BotStorage;
 
   constructor(signingSecret: string, botToken: string, appToken: string) {
@@ -108,7 +111,7 @@ export default class Slackbot implements ChatBot {
       //  restart
       //  quit
 
-      const atMe = `<@${this.user.id}>`;
+      const atMe = `<@${this.user?.id}>`;
       const command = message.text.slice(atMe.length).trim();
 
       console.log("command =", command);
@@ -303,7 +306,7 @@ export default class Slackbot implements ChatBot {
     if (!this.messageHasText(message)) {
       return false;
     }
-    return !message.subtype && message.text?.startsWith(`<@${this.user.id}>`);
+    return !message.subtype && message.text?.startsWith(`<@${this.user?.id}>`);
   }
 
   isFromMe(_message: SlackMessage) {
