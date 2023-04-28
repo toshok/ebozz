@@ -1,13 +1,13 @@
 import Game from "../Game.js";
 import Log from "../log.js";
-import EbozzBot from "./bot.js";
 import { InputState } from "../types.js";
 import { Capabilities, ScreenBase, ScreenSize } from "../Screen.js";
 
-import BotStorage from "./storage.js";
+import { ChatBot } from "./types.js";
+import BotStorage from "./BotStorage.js";
 
 export default class BotScreen extends ScreenBase {
-  private bot: EbozzBot;
+  private bot: ChatBot;
   private storage: BotStorage;
   private output_buffer: string;
   private channelId: string;
@@ -15,7 +15,7 @@ export default class BotScreen extends ScreenBase {
 
   constructor(
     log: Log,
-    bot: EbozzBot,
+    bot: ChatBot,
     storage: BotStorage,
     channelId: string,
     gameId: string

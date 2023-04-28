@@ -1,12 +1,13 @@
 import bolt from "@slack/bolt";
 import * as fs from "fs";
 
-import Game from "../Game.js";
-import Log from "../log.js";
-import { SnapshotData } from "../types.js";
-import GAMES from "../games.js";
-import BotScreen from "./screen.js";
-import BotStorage from "./storage.js";
+import Game from "../../Game.js";
+import Log from "../../log.js";
+import { SnapshotData } from "../../types.js";
+import GAMES from "../../games.js";
+import { ChatBot } from "../types.js";
+import BotScreen from "../BotScreen.js";
+import BotStorage from "../BotStorage.js";
 
 type SlackMessage = bolt.SlackEventMiddlewareArgs<"message">["message"];
 type SlackMessageWithText = SlackMessage & { text: string };
@@ -41,7 +42,7 @@ function listAvailableGames() {
   return response;
 }
 
-export default class EbozzBot {
+export default class Slackbot implements ChatBot {
   private app: bolt.App;
   private user: any;
   private storage: BotStorage;
@@ -53,7 +54,7 @@ export default class EbozzBot {
       appToken,
       socketMode: true,
     });
-    this.storage = new BotStorage(`./slackbot-storage/${botToken}`);
+    this.storage = new BotStorage(`./bot-storage/slack/${botToken}`);
   }
 
   async debugChannel(msg: string) {
