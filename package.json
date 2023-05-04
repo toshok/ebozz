@@ -2,14 +2,15 @@
   "name": "ebozz",
   "version": "1.0.0-alpha.16",
   "description": "",
-  "type": "module",
-  "main": "dist/api.js",
+  "private": true,
+  "workspaces": [
+    "./packages/*"
+  ],
   "bin": {
     "ebozz": "dist/console.js",
     "ebozz-slack": "dist/slack.js"
   },
   "scripts": {
-    "build": "tsc",
     "format": "prettier -w package.json src/**",
     "lint": "eslint src/**",
     "ebozz": "node dist/console",

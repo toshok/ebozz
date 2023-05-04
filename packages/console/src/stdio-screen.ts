@@ -10,7 +10,7 @@ import {
   BufferMode,
   ScreenSize,
   Capabilities,
-} from "../core/index.js";
+} from "@ebozz/core";
 
 export default class StdioScreen extends ScreenBase {
   private textStyle: TextStyle;

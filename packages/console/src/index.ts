@@ -8,7 +8,7 @@ import {
   dumpHeader,
   dumpDictionary,
   dumpObjectTable,
-} from "../core/index.js";
+} from "@ebozz/core";
 
 import BlessedScreen from "./blessed-screen.js";
 import StdioScreen from "./stdio-screen.js";

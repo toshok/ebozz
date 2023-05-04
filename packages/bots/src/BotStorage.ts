@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { rimrafSync } from "rimraf";
 
-import { InputState } from "../core/index.js";
+import { InputState } from "@ebozz/core";
 
 export default class BotStorage {
   private rootDir: string;

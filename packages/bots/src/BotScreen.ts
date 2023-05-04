@@ -5,7 +5,7 @@ import {
   Capabilities,
   ScreenBase,
   ScreenSize,
-} from "../core/index.js";
+} from "@ebozz/core";
 
 import { ChatBot } from "./types.js";
 import BotStorage from "./BotStorage.js";

@@ -1,9 +1,9 @@
 import { Client, Events, GatewayIntentBits, Message } from "discord.js";
 import * as fs from "fs";
 
-import { Game, Log, SnapshotData } from "../../core/index.js";
+import { Game, Log, SnapshotData } from "@ebozz/core";
 
-import GAMES from "../../games.js";
+import GAMES from "../../src/games.js";
 
 import BotScreen from "../BotScreen.js";
 import BotStorage from "../BotStorage.js";

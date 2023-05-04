@@ -1,0 +1,18 @@
+{
+  "references": [
+    {
+      "path": "../core"
+    }
+  ],
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "composite": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2020",
+    "sourceMap": true,
+    "outDir": "dist",
+    // "noImplicitAny": true,
+    "strictNullChecks": true
+  }
+}

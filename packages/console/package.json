@@ -1,0 +1,29 @@
+{
+  "name": "@ebozz/console",
+  "version": "1.0.0-alpha.16",
+  "description": "",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/toshok/ebozz"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix"
+    ]
+  },
+  "packageManager": "yarn@3.5.0",
+  "dependencies": {
+    "@ebozz/core": "workspace:*",
+    "typescript": "^5.0.4"
+  }
+}

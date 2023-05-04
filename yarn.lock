@@ -59,6 +59,32 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ebozz/bots@workspace:packages/bots":
+  version: 0.0.0-use.local
+  resolution: "@ebozz/bots@workspace:packages/bots"
+  dependencies:
+    "@ebozz/core": "workspace:*"
+    typescript: ^5.0.4
+  languageName: unknown
+  linkType: soft
+
+"@ebozz/console@workspace:packages/console":
+  version: 0.0.0-use.local
+  resolution: "@ebozz/console@workspace:packages/console"
+  dependencies:
+    "@ebozz/core": "workspace:*"
+    typescript: ^5.0.4
+  languageName: unknown
+  linkType: soft
+
+"@ebozz/core@workspace:*, @ebozz/core@workspace:packages/core":
+  version: 0.0.0-use.local
+  resolution: "@ebozz/core@workspace:packages/core"
+  dependencies:
+    typescript: ^5.0.4
+  languageName: unknown
+  linkType: soft
+
 "@eslint-community/eslint-utils@npm:^4.2.0":
   version: 4.4.0
   resolution: "@eslint-community/eslint-utils@npm:4.4.0"

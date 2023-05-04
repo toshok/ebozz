@@ -118,7 +118,7 @@ export interface Screen {
 }
 
 export class ScreenBase implements Screen {
-  protected log: Log;
+  log: Log;
   private id: string;
 
   constructor(log: Log, id: string) {

@@ -11,7 +11,7 @@ import {
   Game,
   InputState,
   toI16,
-} from "../core/index.js";
+} from "@ebozz/core";
 
 class Window {
   screen: blessed.Widgets.Screen;
