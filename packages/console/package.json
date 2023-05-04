@@ -22,9 +22,9 @@
     "test-zork3": "node dist/src/test-runner.js zork3",
     "test-wishbringer": "node dist/src/test-runner.js wishbringer",
     "test-hhg": "node dist/src/test-runner.js hhg",
-    "ziptest-r3": "node dist/console --screen stdio gamefiles/ziptest-r40-s840613.z3",
-    "ziptest-r6y": "node dist/console --screen stdio gamefiles/ziptest-r12-s890607.z6",
-    "ziptest-r6z": "node dist/console --screen stdio gamefiles/ziptest-r13-s890619.z6"
+    "test-zip-r3": "node dist/src/index.js --screen stdio ../../gamefiles/ziptest-r40-s840613.z3",
+    "test-zip-r6y": "node dist/src/index.js --screen stdio ../../gamefiles/ziptest-r12-s890607.z6",
+    "test-zip-r6z": "node dist/src/index.js --screen stdio ../../gamefiles/ziptest-r13-s890619.z6"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "MIT",
