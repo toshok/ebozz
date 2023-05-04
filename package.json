@@ -6,17 +6,11 @@
   "workspaces": [
     "./packages/*"
   ],
-  "bin": {
-    "ebozz": "dist/console.js",
-    "ebozz-slack": "dist/slack.js"
-  },
   "scripts": {
-    "format": "prettier -w package.json src/**",
-    "lint": "eslint src/**",
-    "ebozz": "yarn workspace @ebozz/console",
-    "slackbot": "node dist/bots/slack",
-    "discordbot": "node dist/bots/discord",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",
+    "ebozz": "yarn workspace @ebozz/console",
+    "slackbot": "yarn workspace @ebozz/bots slackbot",
+    "discordbot": "yarn workspace @ebozz/bots discordbot",
     "hhg": "yarn workspace @ebozz/console hhg",
     "lgop": "yarn workspace @ebozz/console lgop",
     "spellbreaker": "yarn workspace @ebozz/console spellbreaker",

@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier -w package.json src/**",
-    "lint": "eslint src/**"
+    "lint": "eslint src/**",
+    "slackbot": "node dist/src/slack",
+    "discordbot": "node dist/src/discord"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "MIT",
