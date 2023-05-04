@@ -456,6 +456,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/seedrandom@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@types/seedrandom@npm:3.0.5"
+  checksum: d63d56ebc609203cf8cbe2ab7e7934237446bc2463ade664be130dcd4a3d74915d529909de2e1b18141cfabc9e42784998b7e5ff30c016919ac5b83911a700f0
+  languageName: node
+  linkType: hard
+
 "@types/semver@npm:^7.3.12":
   version: 7.3.13
   resolution: "@types/semver@npm:7.3.13"
@@ -1177,6 +1184,7 @@ __metadata:
     "@types/node": ^18.15.11
     "@types/nopt": ^3.0.29
     "@types/readline-sync": ^1.4.4
+    "@types/seedrandom": ^3.0.5
     "@typescript-eslint/eslint-plugin": ^5.58.0
     "@typescript-eslint/parser": ^5.58.0
     blessed: ^0.1.81

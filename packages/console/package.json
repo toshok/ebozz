@@ -5,7 +5,17 @@
   "type": "module",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "hhg": "node dist/src/index.js ../../gamefiles/hitchhiker-r59-s851108.z3",
+    "lgop": "node dist/src/index.js ../../gamefiles/leathergoddesses-r59-s860730.z3",
+    "spellbreaker": "node dist/src/index.js ../../gamefiles/spellbreaker-r87-s860904.z3",
+    "stationfall": "node dist/src/index.js ../../gamefiles/stationfall-r107-s870430.z3",
+    "trinity": "node dist/src/index.js ../../gamefiles/trinity-r15-s870628.z4",
+    "wishbringer": "node dist/src/index.js ../../gamefiles/wishbringer-r69-s850920.z3",
+    "zork1": "node dist/src/index.js ../../gamefiles/zork1-r119-s880429.z3",
+    "zork2": "node dist/src/index.js ../../gamefiles/zork2-r63-s860811.z3",
+    "zork3": "node dist/src/index.js ../../gamefiles/zork3-r25-s860811.z3",
+    "test": "node dist/test-runner.js"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "MIT",
