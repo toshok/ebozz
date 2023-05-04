@@ -1,9 +1,8 @@
 import { Client, Events, GatewayIntentBits, Message } from "discord.js";
 import * as fs from "fs";
+import * as path from "path";
 
-import { Game, Log, SnapshotData } from "@ebozz/core";
-
-import GAMES from "../../src/games.js";
+import { Game, Log, SnapshotData, Games } from "@ebozz/core";
 
 import BotScreen from "../BotScreen.js";
 import BotStorage from "../BotStorage.js";
@@ -30,8 +29,8 @@ const noSaveLoadSupport = {
 
 function listAvailableGames() {
   let response = "Games available:\n";
-  for (const id of Object.keys(GAMES).sort()) {
-    const g = GAMES[id];
+  for (const id of Object.keys(Games).sort()) {
+    const g = Games[id];
     response += `**${id}**: _${g.name}_\n`;
   }
   return response;
@@ -121,7 +120,7 @@ export default class DiscordBot implements ChatBot {
 
       if (command.startsWith("play ")) {
         const gameId = command.slice("play ".length).trim();
-        if (!GAMES[gameId]) {
+        if (!Games[gameId]) {
           message.channel.send(`unknown game ${gameId}`);
           message.channel.send(listAvailableGames());
           return;
@@ -131,7 +130,7 @@ export default class DiscordBot implements ChatBot {
 
         const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
-          fs.readFileSync(GAMES[gameId].path),
+          fs.readFileSync(path.join("../../gamefiles", Games[gameId].filename)),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
           noSaveLoadSupport
@@ -152,7 +151,7 @@ export default class DiscordBot implements ChatBot {
 
         const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
-          fs.readFileSync(GAMES[gameId].path),
+          fs.readFileSync(path.join("../../gamefiles", Games[gameId].filename)),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
           noSaveLoadSupport

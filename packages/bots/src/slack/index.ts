@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import EbozzBot from "./bot.js";
 
 const bot = new EbozzBot(

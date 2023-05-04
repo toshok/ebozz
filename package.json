@@ -13,7 +13,7 @@
   "scripts": {
     "format": "prettier -w package.json src/**",
     "lint": "eslint src/**",
-    "ebozz": "node dist/console",
+    "ebozz": "yarn workspace @ebozz/console",
     "slackbot": "node dist/bots/slack",
     "discordbot": "node dist/bots/discord",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",

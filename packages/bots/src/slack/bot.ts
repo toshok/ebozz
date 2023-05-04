@@ -2,9 +2,9 @@ import bolt from "@slack/bolt";
 import { UsersListResponse } from "@slack/web-api";
 
 import * as fs from "fs";
+import * as path from "path";
 
-import { Game, Log, SnapshotData } from "@ebozz/core";
-import GAMES from "../../games.js";
+import { Game, Log, SnapshotData, Games } from "@ebozz/core";
 import { ChatBot } from "../types.js";
 import BotScreen from "../BotScreen.js";
 import BotStorage from "../BotStorage.js";
@@ -36,8 +36,8 @@ const noSaveLoadSupport = {
 
 function listAvailableGames() {
   let response = "Games available:\n";
-  for (const id of Object.keys(GAMES).sort()) {
-    const g = GAMES[id];
+  for (const id of Object.keys(Games).sort()) {
+    const g = Games[id];
     response += `*${id}*: _${g.name}_\n`;
   }
   return response;
@@ -130,7 +130,7 @@ export default class Slackbot implements ChatBot {
 
       if (command.startsWith("play ")) {
         const gameId = command.slice("play ".length).trim();
-        if (!GAMES[gameId]) {
+        if (!Games[gameId]) {
           say(`unknown game ${gameId}`);
           say(listAvailableGames());
           return;
@@ -140,7 +140,7 @@ export default class Slackbot implements ChatBot {
 
         const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
-          fs.readFileSync(GAMES[gameId].path),
+          fs.readFileSync(path.join("../../gamefiles", Games[gameId].filename)),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
           noSaveLoadSupport
@@ -161,7 +161,7 @@ export default class Slackbot implements ChatBot {
 
         const log = new Log(Boolean(process.env.DEBUG));
         const game = new Game(
-          fs.readFileSync(GAMES[gameId].path),
+          fs.readFileSync(path.join("../../gamefiles", Games[gameId].filename)),
           log,
           new BotScreen(log, this, this.storage, channelId, gameId),
           noSaveLoadSupport

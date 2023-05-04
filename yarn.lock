@@ -64,6 +64,10 @@ __metadata:
   resolution: "@ebozz/bots@workspace:packages/bots"
   dependencies:
     "@ebozz/core": "workspace:*"
+    eslint: ^8.38.0
+    eslint-config-prettier: ^8.8.0
+    eslint-plugin-prettier: ^4.2.1
+    prettier: ^2.8.7
     typescript: ^5.0.4
   languageName: unknown
   linkType: soft
@@ -73,6 +77,10 @@ __metadata:
   resolution: "@ebozz/console@workspace:packages/console"
   dependencies:
     "@ebozz/core": "workspace:*"
+    eslint: ^8.38.0
+    eslint-config-prettier: ^8.8.0
+    eslint-plugin-prettier: ^4.2.1
+    prettier: ^2.8.7
     typescript: ^5.0.4
   languageName: unknown
   linkType: soft
@@ -81,6 +89,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ebozz/core@workspace:packages/core"
   dependencies:
+    eslint: ^8.38.0
+    eslint-config-prettier: ^8.8.0
+    eslint-plugin-prettier: ^4.2.1
+    prettier: ^2.8.7
     typescript: ^5.0.4
   languageName: unknown
   linkType: soft

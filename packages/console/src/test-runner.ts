@@ -1,5 +1,5 @@
-#!/usr/bin/env node
 import * as fs from "fs";
+import * as path from "path";
 
 import {
   Game,
@@ -8,8 +8,8 @@ import {
   InputState,
   Storage,
   randomSeed,
-} from "./core/index.js";
-import GAMES from "./games.js";
+  Games,
+} from "@ebozz/core";
 
 class Suite {
   toRun: Array<{
@@ -32,27 +32,31 @@ class Suite {
     if (gameSpecs.length) {
       gameSpecs.forEach((spec) => {
         const [gameId, gameFile] = spec.split(":");
-        const game = GAMES[gameId];
+        const game = Games[gameId];
         if (!game) {
           return;
         }
-        if (!gameFile && !game.path) {
+        if (!gameFile && !game.filename) {
           return;
         }
         const walkthroughFile = `tests/${gameId}.walkthrough`;
         if (!fs.existsSync(walkthroughFile)) {
           return;
         }
+
+        const file = gameFile
+          ? gameFile
+          : path.join("../../gamefiles", game.filename);
         this.toRun.push({
           gameId,
-          game: fs.readFileSync(gameFile || game.path),
+          game: fs.readFileSync(file),
           walkthrough: fs.readFileSync(walkthroughFile, "utf8").split("\n"),
         });
       });
     } else {
-      Object.keys(GAMES).forEach((gameId) => {
-        const game = GAMES[gameId];
-        if (!game.path) {
+      Object.keys(Games).forEach((gameId) => {
+        const game = Games[gameId];
+        if (!game.filename) {
           return;
         }
         const walkthroughFile = `tests/${gameId}.walkthrough`;
@@ -61,7 +65,7 @@ class Suite {
         }
         this.toRun.push({
           gameId,
-          game: fs.readFileSync(game.path),
+          game: fs.readFileSync(path.join("../../gamefiles", game.filename)),
           walkthrough: fs.readFileSync(walkthroughFile, "utf8").split("\n"),
         });
       });

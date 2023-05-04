@@ -6,6 +6,8 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
+    "format": "prettier -w package.json src/**",
+    "lint": "eslint src/**",
     "hhg": "node dist/src/index.js ../../gamefiles/hitchhiker-r59-s851108.z3",
     "lgop": "node dist/src/index.js ../../gamefiles/leathergoddesses-r59-s860730.z3",
     "spellbreaker": "node dist/src/index.js ../../gamefiles/spellbreaker-r87-s860904.z3",
@@ -15,7 +17,14 @@
     "zork1": "node dist/src/index.js ../../gamefiles/zork1-r119-s880429.z3",
     "zork2": "node dist/src/index.js ../../gamefiles/zork2-r63-s860811.z3",
     "zork3": "node dist/src/index.js ../../gamefiles/zork3-r25-s860811.z3",
-    "test": "node dist/test-runner.js"
+    "test": "node dist/src/test-runner.js",
+    "test-zork1": "node dist/src/test-runner.js zork1",
+    "test-zork3": "node dist/src/test-runner.js zork3",
+    "test-wishbringer": "node dist/src/test-runner.js wishbringer",
+    "test-hhg": "node dist/src/test-runner.js hhg",
+    "ziptest-r3": "node dist/console --screen stdio gamefiles/ziptest-r40-s840613.z3",
+    "ziptest-r6y": "node dist/console --screen stdio gamefiles/ziptest-r12-s890607.z6",
+    "ziptest-r6z": "node dist/console --screen stdio gamefiles/ziptest-r13-s890619.z6"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "MIT",
@@ -34,6 +43,10 @@
   "packageManager": "yarn@3.5.0",
   "dependencies": {
     "@ebozz/core": "workspace:*",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.7",
     "typescript": "^5.0.4"
   }
 }

@@ -5,7 +5,9 @@
   "type": "module",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "format": "prettier -w package.json src/**",
+    "lint": "eslint src/**"
   },
   "author": "Chris Toshok <toshok@toshokelectic.com> (https://blog.toshokelectric.com/)",
   "license": "MIT",
@@ -23,6 +25,10 @@
   },
   "packageManager": "yarn@3.5.0",
   "devDependencies": {
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.7",
     "typescript": "^5.0.4"
   }
 }
