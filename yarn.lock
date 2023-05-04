@@ -1213,9 +1213,6 @@ __metadata:
     rimraf: ^5.0.0
     seedrandom: ^3.0.5
     typescript: ^5.0.4
-  bin:
-    ebozz: dist/console.js
-    ebozz-slack: dist/slack.js
   languageName: unknown
   linkType: soft
 
