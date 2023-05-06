@@ -43,29 +43,41 @@ function listAvailableGames() {
   return response;
 }
 
+function getPort(): number {
+  return process.env.PORT ? parseInt(process.env.PORT) : 3000;
+}
+
 export default class Slackbot implements ChatBot {
   private app: bolt.App;
+  private receiver: bolt.ExpressReceiver;
   private user: SlackMember | undefined;
   private storage: BotStorage;
 
   constructor(signingSecret: string, botToken: string, appToken: string) {
+    this.receiver = new bolt.ExpressReceiver({ signingSecret });
+
     this.app = new bolt.App({
-      signingSecret,
       token: botToken,
       appToken,
-      socketMode: true,
-      customRoutes: [
-        {
-          path: "/x/alive",
-          method: ["GET"],
-          handler: (req, res) => {
-            res.writeHead(200);
-            res.end(`Things are going just fine at ${req.headers.host}!`);
-          },
-        },
-      ],
+      // socketMode: true,
+      installerOptions: {
+        port: getPort(),
+      },
+      receiver: this.receiver,
     });
+
     this.storage = new BotStorage(`./bot-storage/slack/${botToken}`);
+
+    this.registerHandlers();
+  }
+
+  registerHandlers() {
+    this.app.message(this.message);
+
+    this.receiver.router.get("/x/alive", (req, res) => {
+      res.writeHead(200);
+      res.end(`Things are going just fine at ${req.headers.host}!`);
+    });
   }
 
   async debugChannel(msg: string) {
@@ -251,9 +263,8 @@ export default class Slackbot implements ChatBot {
 
     console.log(`bot user: ${this.user.id}`);
 
-    this.app.message(this.message);
+    await this.app.start(getPort());
 
-    await this.app.start(process.env.PORT || 3000);
     this.debugChannel("⚡️ Ebozz app is running!");
   }
 
