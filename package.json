@@ -7,6 +7,8 @@
     "./packages/*"
   ],
   "scripts": {
+    "build:digitalocean": "yarn install --production=false && yarn run build && rm -rf node_modules && yarn install --production --frozen-lockfile && yarn fetch-games",
+    "build": "yarn workspaces foreach -t run build",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",
     "ebozz": "yarn workspace @ebozz/console",
     "slackbot": "yarn workspace @ebozz/bots slackbot",
