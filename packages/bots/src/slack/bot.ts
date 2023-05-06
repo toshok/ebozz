@@ -54,6 +54,16 @@ export default class Slackbot implements ChatBot {
       token: botToken,
       appToken,
       socketMode: true,
+      customRoutes: [
+        {
+          path: "/x/alive",
+          method: ["GET"],
+          handler: (req, res) => {
+            res.writeHead(200);
+            res.end(`Things are going just fine at ${req.headers.host}!`);
+          },
+        },
+      ],
     });
     this.storage = new BotStorage(`./bot-storage/slack/${botToken}`);
   }
