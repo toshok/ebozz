@@ -7,7 +7,7 @@
     "./packages/*"
   ],
   "scripts": {
-    "build:digitalocean": "yarn install --production=false && yarn run build && rm -rf node_modules && yarn install --production --frozen-lockfile && yarn fetch-games",
+    "build:digitalocean": "yarn run build && yarn fetch-games",
     "build": "yarn workspaces foreach -t run build",
     "fetch-games": "curl https://eblong.com/infocom/allgamefiles.zip -o allgamefiles.zip && unzip allgamefiles.zip && rm allgamefiles.zip",
     "ebozz": "yarn workspace @ebozz/console",
@@ -36,6 +36,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/toshok/ebozz"
+  },
+  "engines": {
+    "node": "20.0.0",
+    "yarn": "1.22.19"
   },
   "volta": {
     "node": "20.0.0",
