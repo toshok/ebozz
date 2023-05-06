@@ -110,7 +110,7 @@ export default class Slackbot implements ChatBot {
   }
 
   message = async ({ message, say }) => {
-    // console.log("got message", JSON.stringify(message, null, 2));
+    console.log("got message", JSON.stringify(message, null, 2));
 
     if (
       !this.isChatMessage(message) ||
